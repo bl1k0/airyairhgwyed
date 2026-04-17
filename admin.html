@@ -529,6 +529,7 @@
               <h3 id="subCount">All Submissions</h3>
               <div class="toolbar-right">
                 <input class="search-box" id="searchBox" placeholder="Search by name, service…" oninput="filterTable()" />
+                <button class="btn-sm" onclick="loadSubmissions(); toast('Refreshed.', 'info');"><i class="fas fa-rotate-right"></i> Refresh</button>
                 <button class="btn-sm danger" onclick="clearAllSubmissions()"><i class="fas fa-trash"></i> Clear All</button>
                 <button class="btn-sm" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
               </div>
@@ -753,10 +754,20 @@
 
   // Try decrypting with the static key first (used by script.js / the public form),
   // then fall back to the session-derived key (used when admin re-encrypts data).
+  // This ensures submissions written by any version of the code are always readable.
   async function aesDecryptAuto(b64) {
+    // 1. Try the canonical static key (what script.js always writes with)
     const decoded = await aesDecrypt(b64, STATIC_ENC_KEY);
     if (decoded !== null) return decoded;
-    return await aesDecrypt(b64, getEncKey());
+    // 2. Try the session-derived key (if admin previously re-encrypted)
+    const sessionResult = await aesDecrypt(b64, getEncKey());
+    if (sessionResult !== null) return sessionResult;
+    // 3. Try any stored ve_enc_ref value as a last resort (legacy)
+    const storedRef = localStorage.getItem('ve_enc_ref');
+    if (storedRef && storedRef !== STATIC_ENC_KEY) {
+      return await aesDecrypt(b64, storedRef);
+    }
+    return null;
   }
 
   // ===== CREDENTIAL MANAGEMENT =====
@@ -971,15 +982,13 @@
     async saveSubmission(data) {
       const raw = localStorage.getItem(DATA_KEY);
       let arr = [];
-      const key = sessionStorage.getItem(SESSION_KEY);
-      // Derive a static encryption key from the stored credential hash
-      // so submissions can be saved even without admin being logged in
-      const staticKey = localStorage.getItem('ve_enc_ref') || 'veridian_default_2025_key';
+      // ALWAYS use the static key — this must match STATIC_ENC_KEY in script.js
+      const staticKey = STATIC_ENC_KEY;
       if (raw) { const dec = await aesDecrypt(raw, staticKey); arr = dec || []; }
       arr.push({ ...data, id: genId(), ts: Date.now(), status: 'new' });
       const enc = await aesEncrypt(arr, staticKey);
       localStorage.setItem(DATA_KEY, enc);
-      // Store a reference key derivation marker (no plaintext secrets)
+      // Keep ve_enc_ref pinned to the static key
       localStorage.setItem('ve_enc_ref', staticKey);
     }
   };

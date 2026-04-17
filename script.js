@@ -135,11 +135,17 @@ function _sanitise(str) {
 }
 
 async function saveSubmissionEncrypted(formData) {
-  const encKey = localStorage.getItem(ENC_KEY_REF) || STATIC_ENC_KEY;
+  // ALWAYS use the static key — never read from ve_enc_ref.
+  // If the admin session has previously written a different key to ve_enc_ref,
+  // reading it here would encrypt under a key that admin can no longer decrypt
+  // after logout (session key is gone). The static key is the only key that
+  // admin.html's aesDecryptAuto() can reliably recover without an active session.
+  const encKey = STATIC_ENC_KEY;
   let existing = [];
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
-    const dec = await _aesDecrypt(raw, encKey);
+    // Try decrypting with both keys to handle any legacy data
+    const dec = await _aesDecrypt(raw, encKey) || await _aesDecrypt(raw, localStorage.getItem(ENC_KEY_REF) || '');
     existing = dec || [];
   }
   // Sanitise every field before storing
@@ -155,8 +161,10 @@ async function saveSubmissionEncrypted(formData) {
     message:  _sanitise(formData.message),
   };
   existing.push(entry);
+  // Always re-encrypt under the static key so admin can always read it
   const encrypted = await _aesEncrypt(existing, encKey);
   localStorage.setItem(STORAGE_KEY, encrypted);
+  // Ensure ve_enc_ref always reflects the static key (do NOT let admin session override this)
   localStorage.setItem(ENC_KEY_REF, encKey);
 }
 
