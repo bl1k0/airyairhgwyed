@@ -10,7 +10,11 @@
 //   2. Click Deploy → Manage Deployments → copy the Web App URL
 //   3. It looks like: https://script.google.com/macros/s/AKfy.../exec
 // NOTE: The project editor URL (/home/projects/...) is WRONG — it won't work.
-const APPS_SCRIPT_URL ='https://script.google.com/macros/s/AKfycbwN6TdLaVjwUMqEk1tt8bulAQxIUqKyVRSGDklWSK_KB2DFme8wfuIClus3cKt1WbGq/exec';
+// URL is managed via the Admin panel (Settings tab) and stored in localStorage.
+// The hardcoded value below is a fallback — once you save a URL in the admin,
+// that takes priority automatically on every page load.
+const _HARDCODED_URL   = 'https://script.google.com/macros/s/AKfycbwN6TdLaVjwUMqEk1tt8bulAQxIUqKyVRSGDklWSK_KB2DFme8wfuIClus3cKt1WbGq/exec';
+const APPS_SCRIPT_URL  = (localStorage.getItem('ve_apps_url') || '').trim() || _HARDCODED_URL;
 // ────────────────────────────────────────────────────────────
 
 

@@ -477,13 +477,24 @@
 
             <div class="settings-card full" style="background:rgba(79,142,247,0.04);border-color:rgba(79,142,247,0.2);">
               <h3><i class="fas fa-plug"></i> Google Apps Script URL</h3>
-              <p>The Web App URL from your deployed Apps Script. Must be set in both <code style="font-family:'DM Mono',monospace;font-size:0.8em;">admin.html</code> and <code style="font-family:'DM Mono',monospace;font-size:0.8em;">script.js</code>.</p>
+              <p>Paste your deployed Apps Script <code style="font-family:'DM Mono',monospace;font-size:0.8em;">/exec</code> URL here. Saving applies it <strong>instantly</strong> — no page reload, no file edits needed.</p>
               <div class="s-field">
-                <label>Your Deployed Web App URL</label>
-                <input type="url" id="set-apps-url" placeholder="https://script.google.com/macros/s/…/exec" />
+                <label>Deployed Web App URL</label>
+                <input type="url" id="set-apps-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-family:'DM Mono',monospace;font-size:0.82rem;" />
               </div>
-              <button class="btn-save" onclick="saveAppsUrl()"><i class="fas fa-save"></i> Save URL locally</button>
-              <div class="save-confirm" id="sc-apps-url"><i class="fas fa-circle-check"></i> Saved locally. Remember to also hard-code it in both files.</div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+                <button class="btn-save" onclick="saveAppsUrl()"><i class="fas fa-save"></i> Save &amp; Apply</button>
+                <button class="btn-save" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);" onclick="testAppsUrl()"><i class="fas fa-plug"></i> Test Connection</button>
+              </div>
+              <div class="save-confirm" id="sc-apps-url"><i class="fas fa-circle-check"></i> URL saved &amp; applied — submissions reloading now.</div>
+              <div class="save-confirm" id="sc-apps-url-err" style="color:var(--danger);"><i class="fas fa-circle-exclamation"></i> <span id="apps-url-err-msg"></span></div>
+              <div style="margin-top:14px;font-size:0.78rem;color:var(--text2);line-height:1.7;">
+                <strong style="color:var(--text);">How to get this URL:</strong><br>
+                1. Open <a href="https://script.google.com" target="_blank" style="color:var(--accent);">script.google.com</a> → your project<br>
+                2. Click <strong>Deploy → Manage Deployments</strong><br>
+                3. Copy the Web App URL (ends in <code style="font-family:'DM Mono',monospace;">/exec</code>)<br>
+                4. Every time you edit the script, create a <strong>New Deployment</strong> — editing an existing one won't update the live version.
+              </div>
             </div>
 
             <div class="settings-card">
@@ -603,7 +614,9 @@
   // The DEPLOYED /exec URL — NOT the project editor URL.
   // ✅ Correct:  https://script.google.com/macros/s/AKfy.../exec
   // ❌ Wrong:    https://script.google.com/home/projects/...
-  const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbwN6TdLaVjwUMqEk1tt8bulAQxIUqKyVRSGDklWSK_KB2DFme8wfuIClus3cKt1WbGq/exec';
+  // Runtime URL — starts from localStorage (saved via Settings), falls back to the hard-coded value.
+  const _HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwN6TdLaVjwUMqEk1tt8bulAQxIUqKyVRSGDklWSK_KB2DFme8wfuIClus3cKt1WbGq/exec';
+  let APPS_SCRIPT_URL = (localStorage.getItem('ve_apps_url') || '').trim() || _HARDCODED_URL;
 
   // ── ADMIN SECRET ─────────────────────────────────────────────
   // ⚠ SECURITY: This file is public on GitHub Pages — never store the raw secret here.
@@ -971,15 +984,66 @@
     document.getElementById('stat-years').value        = s.stat_years || '';
     document.getElementById('stat-satisfaction').value = s.stat_satisfaction || '';
     document.getElementById('stat-rating').value       = s.stat_rating || '';
-    const savedUrl = localStorage.getItem('ve_apps_url') || '';
-    document.getElementById('set-apps-url').value = savedUrl !== 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE' ? savedUrl : '';
+    // Show the currently active URL (localStorage wins, then the hardcoded fallback)
+    document.getElementById('set-apps-url').value = APPS_SCRIPT_URL || '';
   }
 
   function saveAppsUrl() {
     const url = document.getElementById('set-apps-url').value.trim();
+    if (!url || !url.startsWith('https://script.google.com/macros/s/')) {
+      toast('Please enter a valid Apps Script /exec URL.', 'err');
+      return;
+    }
     localStorage.setItem('ve_apps_url', url);
+    APPS_SCRIPT_URL = url;  // apply immediately — no page reload needed
     showConfirm('apps-url');
-    toast('URL saved locally. Hard-code it in admin.html & script.js too.', 'info');
+    document.getElementById('configBanner').style.display = 'none';
+    document.getElementById('setupNotice').style.display  = 'none';
+    toast('URL saved & applied — loading submissions now…', 'ok');
+    loadSubmissions();
+  }
+
+  async function testAppsUrl() {
+    const url = document.getElementById('set-apps-url').value.trim();
+    if (!url || !url.startsWith('https://script.google.com/macros/s/')) {
+      toast('Enter a valid Apps Script /exec URL first.', 'err');
+      return;
+    }
+    toast('Testing connection…', 'info');
+    try {
+      // Use a quick JSONP probe with the current ADMIN_SECRET
+      const testSecret = ADMIN_SECRET || DEFAULT_PASS;
+      const result = await new Promise((resolve, reject) => {
+        const cbName = '_ve_test_' + Date.now();
+        const script = document.createElement('script');
+        const params = new URLSearchParams({ action: 'get', secret: testSecret, callback: cbName });
+        const timer = setTimeout(() => {
+          delete window[cbName]; script.remove();
+          reject(new Error('Timed out — URL may be wrong or deployment is not live.'));
+        }, 10000);
+        window[cbName] = (data) => {
+          clearTimeout(timer); delete window[cbName]; script.remove(); resolve(data);
+        };
+        script.onerror = () => {
+          clearTimeout(timer); delete window[cbName]; script.remove();
+          reject(new Error('Script load failed — check the URL and make sure access is set to "Anyone".'));
+        };
+        script.src = url + '?' + params.toString();
+        document.head.appendChild(script);
+      });
+      if (result.ok) {
+        toast('✓ Connection successful — ' + (result.submissions?.length ?? 0) + ' submission(s) found.', 'ok');
+      } else {
+        toast('Connected but got error: ' + (result.error || 'Unknown. Check ADMIN_SECRET matches your password.'), 'err');
+      }
+    } catch (err) {
+      const errEl = document.getElementById('apps-url-err-msg');
+      errEl.textContent = err.message;
+      const el = document.getElementById('sc-apps-url-err');
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 6000);
+      toast('Connection failed: ' + err.message, 'err');
+    }
   }
 
   function saveSetting(type) {
