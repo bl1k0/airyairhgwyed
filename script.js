@@ -99,12 +99,17 @@ function _sanitise(str) {
 }
 
 // ===== QUOTE FORM SUBMISSION =====
+// The "We'll contact you within 24 hours" confirmation is ONLY shown
+// after Supabase has echoed back a real row with an id. If the insert
+// fails for any reason (bad key, RLS block, offline, etc.) the user
+// sees a visible error and is asked to retry — we never mislead them.
 async function submitForm(e) {
   e.preventDefault();
   const form    = document.getElementById('quoteForm');
   const btn     = form.querySelector('button[type="submit"]');
   const success = document.getElementById('formSuccess');
 
+  _hideFormError(form);
   btn.disabled  = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
 
@@ -118,22 +123,33 @@ async function submitForm(e) {
     status:   'new',
   };
 
-  // If keys haven't been filled in yet — fall back to local queue
+  // Config guard — show a clear error instead of a fake success.
   if (!_configOk()) {
-    _localFallbackSave(payload);
-    console.warn('[Veridian] Supabase not configured — saved locally.');
-    _showSuccess(form, btn, success);
+    console.error('[Veridian] Supabase not configured in script.js — cannot submit.');
+    _localFallbackSave(payload); // keep the data locally so it's not lost
+    _resetBtn(btn);
+    _showFormError(form, 'Our server is being set up. Please call or WhatsApp us instead — your request has been saved locally.');
     return;
   }
 
   try {
-    await _supabaseInsert(payload);
-    _showSuccess(form, btn, success);
+    const savedRow = await _supabaseInsert(payload);
+
+    // ✅ SUCCESS ONLY IF Supabase echoed back a row with an id
+    if (savedRow && savedRow.id) {
+      console.info('[Veridian] Quote saved to Supabase with id:', savedRow.id);
+      _showSuccess(form, btn, success);
+    } else {
+      throw new Error('Supabase returned an empty response — row may not have been saved.');
+    }
   } catch (err) {
     console.error('[Veridian] Supabase insert failed:', err);
-    // Network hiccup → keep the data so it's never lost
+    // Keep the data so the admin can flush it later — but DO NOT say "we'll contact you".
     _localFallbackSave(payload);
-    _showSuccess(form, btn, success);
+    _resetBtn(btn);
+    _showFormError(form,
+      "Sorry, we couldn't send your request right now. Please try again, or reach us on WhatsApp — we'll respond promptly."
+    );
   }
 }
 
@@ -143,7 +159,9 @@ function _configOk() {
       && !SUPABASE_ANON_KEY.includes('YOUR_ANON_KEY');
 }
 
-// Direct REST insert — no npm dependency needed for the public form
+// Direct REST insert — requests the inserted row back so we can
+// confirm the write actually landed in the database (return=representation).
+// Returns the saved row ({ id, created_at, ... }) or throws.
 async function _supabaseInsert(payload) {
   const url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/quotes';
   const res = await fetch(url, {
@@ -152,14 +170,19 @@ async function _supabaseInsert(payload) {
       'Content-Type':  'application/json',
       'apikey':        SUPABASE_ANON_KEY,
       'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Prefer':        'return=minimal',
+      'Prefer':        'return=representation', // ← ask Supabase to echo the saved row
     },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => res.status);
+    const text = await res.text().catch(() => String(res.status));
     throw new Error('Supabase ' + res.status + ': ' + text);
   }
+  const rows = await res.json().catch(() => null);
+  if (!Array.isArray(rows) || rows.length === 0 || !rows[0].id) {
+    throw new Error('Supabase accepted the request but returned no row.');
+  }
+  return rows[0]; // the confirmed, persisted row
 }
 
 function _showSuccess(form, btn, success) {
@@ -174,8 +197,40 @@ function _showSuccess(form, btn, success) {
   }, 5000);
 }
 
-// localStorage fallback — preserves submissions if the network drops
-// or if keys haven't been pasted in yet. Admin can flush them later.
+function _resetBtn(btn) {
+  btn.disabled  = false;
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Quote Request';
+}
+
+// ── Inline error banner (created on demand, no HTML edits needed) ──
+function _ensureFormErrorEl(form) {
+  let el = form.querySelector('#formError');
+  if (el) return el;
+  el = document.createElement('div');
+  el.id = 'formError';
+  el.setAttribute('role', 'alert');
+  el.style.cssText =
+    'display:none;margin-top:14px;padding:12px 16px;border-radius:10px;' +
+    'background:rgba(240,64,64,0.08);border:1px solid rgba(240,64,64,0.35);' +
+    'color:#f04040;font-size:0.9rem;line-height:1.5;align-items:flex-start;gap:10px;';
+  el.innerHTML = '<i class="fas fa-circle-exclamation" style="margin-top:2px;"></i><span id="formErrorMsg"></span>';
+  // Insert right after the submit button / success div
+  const success = form.querySelector('#formSuccess');
+  (success ? success.parentNode.insertBefore(el, success.nextSibling) : form.appendChild(el));
+  return el;
+}
+function _showFormError(form, msg) {
+  const el = _ensureFormErrorEl(form);
+  el.querySelector('#formErrorMsg').textContent = msg;
+  el.style.display = 'flex';
+}
+function _hideFormError(form) {
+  const el = form.querySelector('#formError');
+  if (el) el.style.display = 'none';
+}
+
+// localStorage fallback — preserves submissions so customer data is
+// never lost during an outage. Admin flushes them via Settings → Offline Queue.
 function _genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -239,4 +294,4 @@ const statsObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.5 });
 
 const heroStats = document.querySelector('.hero-stats');
-if (heroStats) statsObserver.observe(heroStats);
+if (heroStats
