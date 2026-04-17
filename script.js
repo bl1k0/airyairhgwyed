@@ -188,11 +188,19 @@ async function submitForm(e) {
     message:  form.querySelector('[name="message"]').value,
   };
 
-  // Save encrypted to localStorage
-  await saveSubmissionEncrypted(formData);
+  // Save encrypted to localStorage — await and catch any errors
+  let saved = false;
+  try {
+    await saveSubmissionEncrypted(formData);
+    saved = true;
+  } catch (err) {
+    console.error('[Veridian] Failed to save submission:', err);
+  }
 
-  // Simulate submission delay (replace with EmailJS or backend webhook if needed)
-  setTimeout(() => {
+  // Small artificial delay for UX polish
+  await new Promise(r => setTimeout(r, 1400));
+
+  if (saved) {
     form.reset();
     btn.style.display = 'none';
     success.style.display = 'flex';
@@ -202,7 +210,12 @@ async function submitForm(e) {
       btn.innerHTML      = '<i class="fas fa-paper-plane"></i> Submit Quote Request';
       success.style.display = 'none';
     }, 5000);
-  }, 1400);
+  } else {
+    // Save failed — re-enable button so user can try again
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Quote Request';
+    alert('Sorry, there was a problem saving your request. Please call us directly or try again.');
+  }
 }
 
 // ===== BACK TO TOP =====
@@ -258,3 +271,14 @@ const statsObserver = new IntersectionObserver((entries) => {
 
 const heroStats = document.querySelector('.hero-stats');
 if (heroStats) statsObserver.observe(heroStats);
+
+// ===== DEBUG HELPER (console-only, safe to leave in) =====
+// Run  veDebug()  in browser console on index.html to check if saves are working.
+window.veDebug = async function() {
+  const raw = localStorage.getItem('ve_submissions');
+  if (!raw) { console.log('[VE Debug] No submissions in localStorage yet.'); return; }
+  const dec = await _aesDecrypt(raw, STATIC_ENC_KEY);
+  if (!dec) { console.log('[VE Debug] Could not decrypt — key mismatch?'); return; }
+  console.log(`[VE Debug] ${dec.length} submission(s) found:`);
+  dec.forEach((s, i) => console.log(`  #${i+1}:`, s.name, '|', s.service, '|', new Date(s.ts).toLocaleString()));
+};
