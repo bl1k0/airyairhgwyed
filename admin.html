@@ -600,7 +600,9 @@
   ============================================================ */
 
   // ── PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE ──────────
-  // Same URL as in script.js
+  // The DEPLOYED /exec URL — NOT the project editor URL.
+  // ✅ Correct:  https://script.google.com/macros/s/AKfy.../exec
+  // ❌ Wrong:    https://script.google.com/home/projects/...
   const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 
   // ── ADMIN SECRET — must match ADMIN_SECRET in your Apps Script ──
@@ -723,16 +725,48 @@
   let activeId = null;
 
   async function apiCall(payload) {
-    // Apps Script doesn't support CORS for GET with custom headers,
-    // so we always POST — including for read operations.
-    const res = await fetch(APPS_SCRIPT_URL, {
+    // For READ operations (action=get): use JSONP via a <script> tag.
+    // This bypasses CORS entirely — Apps Script serves a JS callback response.
+    if (payload.action === 'get') {
+      return new Promise((resolve, reject) => {
+        const cbName = '_ve_jsonp_' + Date.now();
+        const script = document.createElement('script');
+        const params = new URLSearchParams({
+          action:   'get',
+          secret:   payload.secret,
+          callback: cbName,
+        });
+        const timer = setTimeout(() => {
+          delete window[cbName];
+          script.remove();
+          reject(new Error('Request timed out. Check your Apps Script URL.'));
+        }, 12000);
+        window[cbName] = (data) => {
+          clearTimeout(timer);
+          delete window[cbName];
+          script.remove();
+          resolve(data);
+        };
+        script.src = APPS_SCRIPT_URL + '?' + params.toString();
+        script.onerror = () => {
+          clearTimeout(timer);
+          delete window[cbName];
+          script.remove();
+          reject(new Error('Script load failed. Check your Apps Script URL.'));
+        };
+        document.head.appendChild(script);
+      });
+    }
+
+    // For WRITE operations (update / delete): POST with text/plain to avoid preflight.
+    // We can't read the response in no-cors mode, but the write succeeds server-side.
+    await fetch(APPS_SCRIPT_URL, {
       method:  'POST',
-      // For reading we can use cors mode and get the response back.
-      // Apps Script accepts cors for POST when deployed as "Anyone".
-      headers: { 'Content-Type': 'application/json' },
+      mode:    'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
       body:    JSON.stringify(payload),
     });
-    return res.json();
+    return { ok: true }; // assume success (no-cors can't read response)
   }
 
   async function loadSubmissions() {

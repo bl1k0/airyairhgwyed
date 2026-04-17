@@ -4,9 +4,13 @@
    ============================================================ */
 
 // ── PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE ──────────
-// After deploying your Apps Script, replace the string below.
-// It looks like: https://script.google.com/macros/s/ABC.../exec
-const APPS_SCRIPT_URL = 'https://script.google.com/home/projects/1k_xhciUn3H5am_ux0GoW9FZ2zHApDD9CuTUGQfiqOQqlgIJQjK3aZ42b';
+// The DEPLOYED /exec URL — NOT the project editor URL.
+// How to get it:
+//   1. Open script.google.com → your project
+//   2. Click Deploy → Manage Deployments → copy the Web App URL
+//   3. It looks like: https://script.google.com/macros/s/AKfy.../exec
+// NOTE: The project editor URL (/home/projects/...) is WRONG — it won't work.
+const APPS_SCRIPT_URL ='https://script.google.com/macros/s/AKfycbw3zn2uziOqJlPt3ShTu7L9l_BeRTW2Z2UT2PQwEGBjzlNO3SogDsccFNm9KkMt1xZE/exec';
 // ────────────────────────────────────────────────────────────
 
 
@@ -121,13 +125,13 @@ async function submitForm(e) {
   }
 
   try {
-    // Google Apps Script requires no-cors for cross-origin POST from static sites.
-    // no-cors means we cannot read the response body, but the request DOES reach
-    // the server and data IS saved in the Sheet.
+    // IMPORTANT: We use Content-Type: text/plain to avoid a CORS preflight request.
+    // Google Apps Script on GitHub Pages only allows "simple" requests (no preflight).
+    // The body is still JSON — Apps Script parses it from postData.contents.
     await fetch(APPS_SCRIPT_URL, {
       method:  'POST',
       mode:    'no-cors',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body:    JSON.stringify(formData),
     });
     _showSuccess(form, btn, success);
