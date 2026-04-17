@@ -7,8 +7,8 @@
 // ═══════════════════════════════════════════════════════════════
 // ⚙  SUPABASE CONFIG — paste your values here (see SUPABASE_SETUP.md)
 // ═══════════════════════════════════════════════════════════════
-const SUPABASE_URL      = 'https://YOUR_PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
+const SUPABASE_URL      = 'https://eptklnlzudhjmhlykicj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_MWwOnnIN9WMSCPJjjlYCdQ_XHkTbBDN';
 // ═══════════════════════════════════════════════════════════════
 // The anon key is safe to expose publicly — RLS policies on the
 // `quotes` table only allow anonymous INSERTs. Reading/updating/
