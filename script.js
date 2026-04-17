@@ -1,20 +1,20 @@
 /* ============================================================
    VERIDIAN EDGE TECHNICAL SERVICES LLC
    script.js — Interactions & Functionality
+   Backend: Supabase (configured via Admin → Settings)
    ============================================================ */
 
-// ── PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE ──────────
-// The DEPLOYED /exec URL — NOT the project editor URL.
-// How to get it:
-//   1. Open script.google.com → your project
-//   2. Click Deploy → Manage Deployments → copy the Web App URL
-//   3. It looks like: https://script.google.com/macros/s/AKfy.../exec
-// NOTE: The project editor URL (/home/projects/...) is WRONG — it won't work.
-// URL is managed via the Admin panel (Settings tab) and stored in localStorage.
-// The hardcoded value below is a fallback — once you save a URL in the admin,
-// that takes priority automatically on every page load.
-const _HARDCODED_URL   = 'https://script.google.com/macros/s/AKfycbwN6TdLaVjwUMqEk1tt8bulAQxIUqKyVRSGDklWSK_KB2DFme8wfuIClus3cKt1WbGq/exec';
-const APPS_SCRIPT_URL  = (localStorage.getItem('ve_apps_url') || '').trim() || _HARDCODED_URL;
+// ── SUPABASE CONFIG ──────────────────────────────────────────
+// These are set by the Admin in the Settings panel and stored
+// in localStorage. No hardcoded secrets needed.
+// Required: Supabase Project URL + anon/public API key.
+// The anon key is safe to expose client-side — row-level security
+// on the "quotes" table restricts reads to authenticated users only.
+function _getSupabaseConfig() {
+  try {
+    return JSON.parse(localStorage.getItem('ve_supabase_cfg') || 'null');
+  } catch (_) { return null; }
+}
 // ────────────────────────────────────────────────────────────
 
 
@@ -110,66 +110,56 @@ async function submitForm(e) {
   btn.disabled  = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
 
-  const formData = {
-    action:   'submit',
+  const payload = {
     name:     _sanitise(form.querySelector('[name="name"]').value),
     phone:    _sanitise(form.querySelector('[name="phone"]').value),
     email:    _sanitise(form.querySelector('[name="email"]').value),
     service:  _sanitise(form.querySelector('[name="service"]').value),
     location: _sanitise(form.querySelector('[name="location"]').value),
     message:  _sanitise(form.querySelector('[name="message"]').value),
+    status:   'new',
   };
 
-  // ── Check if Apps Script URL has been configured ──────────
-  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
-    _localFallbackSave(formData);
+  const cfg = _getSupabaseConfig();
+
+  // ── Supabase not configured yet → local fallback ──────────
+  if (!cfg || !cfg.url || !cfg.anon_key) {
+    _localFallbackSave(payload);
     _showSuccess(form, btn, success);
-    console.warn('[Veridian] Apps Script URL not set — saved to localStorage as fallback.');
+    console.warn('[Veridian] Supabase not configured — saved to localStorage queue.');
     return;
   }
 
   try {
-    // Use hidden iframe + form POST — this is the only reliable way to POST to Google
-    // Apps Script from GitHub Pages. fetch() with no-cors fails silently because Apps
-    // Script responds with a 302 redirect that opaque mode cannot follow.
-    await _iframePost(APPS_SCRIPT_URL, JSON.stringify(formData));
+    await _supabaseInsert(cfg, payload);
     _showSuccess(form, btn, success);
   } catch (err) {
-    console.error('[Veridian] Submission error:', err);
+    console.error('[Veridian] Supabase insert error:', err);
     // Network failure fallback — save locally so data is never lost
-    _localFallbackSave(formData);
+    _localFallbackSave(payload);
     _showSuccess(form, btn, success);
   }
 }
 
-
-// ── iframe POST helper ────────────────────────────────────────
-// fetch() + no-cors silently drops Apps Script 302 redirects.
-// A hidden form POST into a hidden iframe follows redirects natively
-// and requires zero CORS headers — the most reliable way to hit Apps Script.
-function _iframePost(url, jsonBody) {
-  return new Promise((resolve) => {
-    const frameId = '_ve_frame_' + Date.now();
-    const iframe  = document.createElement('iframe');
-    iframe.name   = frameId;
-    iframe.style.cssText = 'display:none;position:absolute;width:0;height:0;border:0;';
-    document.body.appendChild(iframe);
-    const form = document.createElement('form');
-    form.method  = 'POST';
-    form.action  = url;
-    form.target  = frameId;
-    form.enctype = 'text/plain';
-    const input = document.createElement('input');
-    input.type  = 'hidden';
-    input.name  = jsonBody;
-    input.value = '';
-    form.appendChild(input);
-    document.body.appendChild(form);
-    const cleanup = () => { iframe.remove(); form.remove(); };
-    iframe.onload = () => { cleanup(); resolve(); };
-    setTimeout(() => { cleanup(); resolve(); }, 8000);
-    form.submit();
+// ── Supabase REST insert ──────────────────────────────────────
+// Uses the Supabase REST API directly — no npm package needed.
+// Inserts one row into the "quotes" table.
+async function _supabaseInsert(cfg, payload) {
+  const url = cfg.url.replace(/\/$/, '') + '/rest/v1/quotes';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'apikey':        cfg.anon_key,
+      'Authorization': 'Bearer ' + cfg.anon_key,
+      'Prefer':        'return=minimal',
+    },
+    body: JSON.stringify(payload),
   });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.status);
+    throw new Error('Supabase error ' + res.status + ': ' + text);
+  }
 }
 
 function _showSuccess(form, btn, success) {
@@ -184,15 +174,15 @@ function _showSuccess(form, btn, success) {
   }, 5000);
 }
 
-// ── localStorage fallback (network failure or URL not yet set) ──
+// ── localStorage fallback (network failure or not configured) ──
 function _genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
-function _localFallbackSave(formData) {
+function _localFallbackSave(payload) {
   try {
     const key      = 've_offline_queue';
     const existing = JSON.parse(localStorage.getItem(key) || '[]');
-    existing.push({ ...formData, id: _genId(), ts: Date.now(), status: 'new' });
+    existing.push({ ...payload, id: _genId(), ts: Date.now() });
     localStorage.setItem(key, JSON.stringify(existing));
   } catch (_) { /* storage quota or blocked — silently ignore */ }
 }

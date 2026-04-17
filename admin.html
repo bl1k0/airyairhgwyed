@@ -84,13 +84,11 @@
     }
     .lockout-timer { font-size: 0.8rem; color: var(--warn); margin-top: 10px; text-align: center; display: none; }
 
-    /* Setup notice shown when Apps Script URL not configured */
     .setup-notice {
-      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
+      background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25);
       border-radius: var(--radius); padding: 12px 16px; margin-top: 16px;
-      font-size: 0.8rem; color: var(--warn); line-height: 1.5; display: none;
+      font-size: 0.8rem; color: var(--accent); line-height: 1.5; display: none;
     }
-    .setup-notice a { color: var(--accent); }
 
     /* ===== ADMIN DASHBOARD ===== */
     #adminDash { display: none; width: 100%; min-height: 100vh; flex-direction: column; }
@@ -216,22 +214,21 @@
     .empty-state { padding: 60px 20px; text-align: center; color: var(--text2); }
     .empty-state i { font-size: 2.5rem; opacity: .3; margin-bottom: 14px; display: block; }
     .empty-state p { font-size: 0.875rem; }
-
-    /* Loading spinner */
     .loading-state { padding: 60px 20px; text-align: center; color: var(--text2); }
     .loading-state i { font-size: 1.8rem; margin-bottom: 12px; display: block; color: var(--accent); }
 
-    /* Config notice banner */
+    /* Config banner */
     .config-banner {
-      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3);
+      background: rgba(79,142,247,0.06); border: 1px solid rgba(79,142,247,0.2);
       border-radius: var(--radius); padding: 16px 20px; margin-bottom: 24px;
-      font-size: 0.875rem; color: var(--warn); line-height: 1.6; display: none;
+      font-size: 0.875rem; color: var(--accent); line-height: 1.6; display: none;
     }
-    .config-banner strong { display: block; margin-bottom: 4px; font-size: 0.95rem; }
+    .config-banner strong { display: block; margin-bottom: 4px; font-size: 0.95rem; color: var(--text); }
     .config-banner code {
       background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;
       font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--text);
     }
+    .config-banner a { color: var(--accent); }
 
     /* Modal */
     .modal-overlay {
@@ -269,7 +266,7 @@
     .settings-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
     .settings-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
     .settings-card h3 i { color: var(--accent); }
-    .settings-card p { color: var(--text2); font-size: 0.8rem; margin-bottom: 20px; }
+    .settings-card p { color: var(--text2); font-size: 0.8rem; margin-bottom: 20px; line-height: 1.6; }
     .settings-card.full { grid-column: 1 / -1; }
     .s-field { margin-bottom: 14px; }
     .s-field label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
@@ -279,15 +276,54 @@
       font-family: inherit; font-size: 0.875rem; outline: none; transition: border-color .2s; resize: vertical;
     }
     .s-field input:focus, .s-field select:focus, .s-field textarea:focus { border-color: var(--accent); }
+    .s-field .hint { font-size: 0.72rem; color: var(--text3); margin-top: 5px; line-height: 1.5; }
+    .s-field .hint a { color: var(--accent); }
     .btn-save {
       padding: 10px 20px; background: var(--accent); color: #fff; border: none;
       border-radius: 8px; font-family: inherit; font-size: 0.875rem; font-weight: 600;
-      cursor: pointer; transition: opacity .2s; display: flex; align-items: center; gap: 8px; margin-top: 4px;
+      cursor: pointer; transition: opacity .2s; display: inline-flex; align-items: center; gap: 8px; margin-top: 4px;
     }
     .btn-save:hover { opacity: .88; }
+    .btn-save.secondary {
+      background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+    }
+    .btn-save.secondary:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
     .save-confirm { display: none; align-items: center; gap: 6px; color: var(--success); font-size: 0.8rem; margin-top: 10px; }
     .save-confirm.show { display: flex; animation: fadeIn .2s ease; }
+    .save-confirm.err-confirm { color: var(--danger); }
     .stats-edit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+    /* Supabase SQL snippet box */
+    .sql-box {
+      background: #0d1117; border: 1px solid var(--border2); border-radius: 8px;
+      padding: 14px 16px; font-family: 'DM Mono', monospace; font-size: 0.75rem;
+      color: #a9c5e8; line-height: 1.7; overflow-x: auto; white-space: pre; margin-top: 10px;
+    }
+    .sql-copy-btn {
+      margin-top: 8px; padding: 6px 14px; background: var(--bg3); border: 1px solid var(--border2);
+      color: var(--text2); border-radius: 6px; font-family: inherit; font-size: 0.75rem;
+      cursor: pointer; transition: all .15s;
+    }
+    .sql-copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Connection status indicator */
+    .conn-status {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.78rem; padding: 5px 12px; border-radius: 99px; font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .conn-status.unknown { background: rgba(148,163,184,0.1); color: var(--text2); border-color: var(--border); }
+    .conn-status.ok      { background: rgba(34,197,94,0.1);   color: var(--success); border-color: rgba(34,197,94,0.3); }
+    .conn-status.err     { background: rgba(240,64,64,0.1);   color: var(--danger);  border-color: rgba(240,64,64,0.3); }
+    .conn-status::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
+
+    /* Offline queue badge */
+    .queue-badge {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; padding: 5px 12px;
+      border-radius: 99px; background: rgba(245,158,11,0.1); color: var(--warn);
+      border: 1px solid rgba(245,158,11,0.3); font-weight: 600;
+    }
 
     /* Security log */
     .log-list { list-style: none; }
@@ -357,9 +393,8 @@
       </div>
       <div class="lockout-timer" id="lockoutTimer"></div>
       <div class="setup-notice" id="setupNotice">
-        <strong>⚠ Apps Script not configured yet.</strong>
-        Open this file and set <code>APPS_SCRIPT_URL</code> at the top of the &lt;script&gt; block.
-        <a href="https://script.google.com" target="_blank">Go to Google Apps Script →</a>
+        <strong>ℹ Supabase not configured yet.</strong><br>
+        After logging in, go to <strong>Settings → Supabase Connection</strong> to connect your database.
       </div>
     </div>
   </div>
@@ -395,7 +430,7 @@
         <div class="sidebar-section" style="margin-top:12px">
           <div class="sidebar-label">Config</div>
           <button class="nav-item" onclick="showPage('settings', this)">
-            <i class="fas fa-sliders"></i> Site Settings
+            <i class="fas fa-sliders"></i> Settings
           </button>
           <button class="nav-item" onclick="showPage('security', this)">
             <i class="fas fa-shield-halved"></i> Security Log
@@ -409,13 +444,12 @@
         <div class="page active" id="page-overview">
           <div class="page-header">
             <h1>Overview</h1>
-            <p>Live snapshot of quote submissions from Google Sheets — visible from anywhere in the world.</p>
+            <p>Live snapshot of quote submissions from Supabase — accessible from any device worldwide.</p>
           </div>
           <div class="config-banner" id="configBanner">
-            <strong>⚠ Google Apps Script URL not configured</strong>
-            Open <code>admin.html</code> and <code>script.js</code>, then set <code>APPS_SCRIPT_URL</code> to your deployed Web App URL.
-            Until then, submissions from visitors will not be saved anywhere.
-            See the <code>google-apps-script.js</code> file for setup instructions.
+            <strong>⚠ Supabase not configured yet</strong>
+            Go to <strong>Settings → Supabase Connection</strong> and enter your Project URL and anon key.
+            Quote form submissions will be saved to localStorage until then.
           </div>
           <div class="stats-row">
             <div class="stat-card accent">
@@ -442,9 +476,12 @@
           <div class="table-wrap">
             <div class="table-toolbar">
               <h3>Recent Submissions</h3>
-              <button class="btn-sm" onclick="loadSubmissions()"><i class="fas fa-rotate-right"></i> Refresh</button>
+              <div class="toolbar-right">
+                <span id="connStatusBadge" class="conn-status unknown"><span>Not connected</span></span>
+                <button class="btn-sm" onclick="loadSubmissions()"><i class="fas fa-rotate-right"></i> Refresh</button>
+              </div>
             </div>
-            <div id="recentTable"><div class="loading-state"><i class="fas fa-spinner fa-spin"></i>Loading…</div></div>
+            <div id="recentTable"><div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
           </div>
         </div>
 
@@ -452,7 +489,7 @@
         <div class="page" id="page-submissions">
           <div class="page-header">
             <h1>Quote Requests</h1>
-            <p>All form submissions — stored in your Google Sheet, accessible from any device, anywhere.</p>
+            <p>All form submissions stored in Supabase — real-time, accessible from any device, anywhere.</p>
           </div>
           <div class="table-wrap">
             <div class="table-toolbar">
@@ -463,43 +500,115 @@
                 <button class="btn-sm" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
               </div>
             </div>
-            <div id="submissionsTable"><div class="loading-state"><i class="fas fa-spinner fa-spin"></i>Loading…</div></div>
+            <div id="submissionsTable"><div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div>
           </div>
         </div>
 
         <!-- SETTINGS -->
         <div class="page" id="page-settings">
           <div class="page-header">
-            <h1>Site Settings</h1>
-            <p>Update contact details and stats. Changes save locally; copy snippets to update your HTML.</p>
+            <h1>Settings</h1>
+            <p>Configure your Supabase connection, contact details, and website stats.</p>
           </div>
           <div class="settings-grid">
 
+            <!-- ── SUPABASE CONNECTION ── -->
             <div class="settings-card full" style="background:rgba(79,142,247,0.04);border-color:rgba(79,142,247,0.2);">
-              <h3><i class="fas fa-plug"></i> Google Apps Script URL</h3>
-              <p>Paste your deployed Apps Script <code style="font-family:'DM Mono',monospace;font-size:0.8em;">/exec</code> URL here. Saving applies it <strong>instantly</strong> — no page reload, no file edits needed.</p>
-              <div class="s-field">
-                <label>Deployed Web App URL</label>
-                <input type="url" id="set-apps-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-family:'DM Mono',monospace;font-size:0.82rem;" />
+              <h3><i class="fas fa-database"></i> Supabase Connection</h3>
+              <p>Enter your Supabase project URL and anon key. These are stored in your browser's localStorage and used by both the quote form and this admin panel. The anon key is safe to use client-side with proper Row Level Security.</p>
+
+              <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+                <div class="s-field" style="flex:1;min-width:260px;">
+                  <label>Project URL</label>
+                  <input type="url" id="sb-url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="font-family:'DM Mono',monospace;font-size:0.82rem;" />
+                  <div class="hint">Found in Supabase Dashboard → Project Settings → API</div>
+                </div>
+                <div class="s-field" style="flex:1;min-width:260px;">
+                  <label>Anon / Public Key</label>
+                  <input type="text" id="sb-anon" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-family:'DM Mono',monospace;font-size:0.82rem;" />
+                  <div class="hint">Use the <strong>anon</strong> key — never the service_role key.</div>
+                </div>
               </div>
-              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-                <button class="btn-save" onclick="saveAppsUrl()"><i class="fas fa-save"></i> Save &amp; Apply</button>
-                <button class="btn-save" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);" onclick="testAppsUrl()"><i class="fas fa-plug"></i> Test Connection</button>
+              <div class="btn-row">
+                <button class="btn-save" onclick="saveSupabaseConfig()"><i class="fas fa-save"></i> Save &amp; Apply</button>
+                <button class="btn-save secondary" onclick="testSupabaseConnection()"><i class="fas fa-plug"></i> Test Connection</button>
+                <span id="sbConnStatus" class="conn-status unknown" style="margin-left:6px;"><span>Not tested</span></span>
               </div>
-              <div class="save-confirm" id="sc-apps-url"><i class="fas fa-circle-check"></i> URL saved &amp; applied — submissions reloading now.</div>
-              <div class="save-confirm" id="sc-apps-url-err" style="color:var(--danger);"><i class="fas fa-circle-exclamation"></i> <span id="apps-url-err-msg"></span></div>
-              <div style="margin-top:14px;font-size:0.78rem;color:var(--text2);line-height:1.7;">
-                <strong style="color:var(--text);">How to get this URL:</strong><br>
-                1. Open <a href="https://script.google.com" target="_blank" style="color:var(--accent);">script.google.com</a> → your project<br>
-                2. Click <strong>Deploy → Manage Deployments</strong><br>
-                3. Copy the Web App URL (ends in <code style="font-family:'DM Mono',monospace;">/exec</code>)<br>
-                4. Every time you edit the script, create a <strong>New Deployment</strong> — editing an existing one won't update the live version.
+              <div class="save-confirm" id="sc-supabase"><i class="fas fa-circle-check"></i> Config saved — submissions reloading now.</div>
+              <div class="save-confirm err-confirm" id="sc-supabase-err"><i class="fas fa-circle-exclamation"></i> <span id="sb-err-msg"></span></div>
+
+              <!-- SQL Setup Guide -->
+              <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+                <div style="font-size:0.875rem;font-weight:700;margin-bottom:10px;color:var(--text);">
+                  <i class="fas fa-terminal" style="color:var(--accent);margin-right:6px;"></i>Database Setup — Run this SQL once in Supabase SQL Editor
+                </div>
+                <div class="sql-box" id="sqlSnippet">-- 1. Create the quotes table
+CREATE TABLE IF NOT EXISTS public.quotes (
+  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  name        text NOT NULL,
+  phone       text NOT NULL,
+  email       text,
+  service     text NOT NULL,
+  location    text,
+  message     text,
+  status      text NOT NULL DEFAULT 'new',
+  created_at  timestamptz DEFAULT now()
+);
+
+-- 2. Enable Row Level Security
+ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
+
+-- 3. Allow anonymous INSERT (form submissions from your website)
+CREATE POLICY "Allow public insert"
+  ON public.quotes FOR INSERT
+  TO anon
+  WITH CHECK (true);
+
+-- 4. BLOCK anonymous SELECT (admin reads via service_role or RLS bypass)
+--    The admin panel uses your anon key + a server-side function OR
+--    you can grant select to authenticated only.
+--    Option A (simplest — recommended): create a Postgres function
+--    that the admin calls with the anon key, bypassing RLS.
+--    Run the function below:
+
+CREATE OR REPLACE FUNCTION public.get_quotes()
+RETURNS SETOF public.quotes
+LANGUAGE sql
+SECURITY DEFINER   -- runs as owner, bypasses RLS
+AS $$
+  SELECT * FROM public.quotes ORDER BY created_at DESC;
+$$;
+
+-- Grant execute to anon so the admin panel can call it
+GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
+                <button class="sql-copy-btn" onclick="copySql()"><i class="fas fa-copy"></i> Copy SQL</button>
+                <div style="margin-top:10px;font-size:0.78rem;color:var(--text2);line-height:1.8;">
+                  <strong style="color:var(--text);">Step-by-step:</strong><br>
+                  1. Go to <a href="https://supabase.com/dashboard" target="_blank" style="color:var(--accent);">supabase.com/dashboard</a> → your project<br>
+                  2. Click <strong>SQL Editor</strong> in the left sidebar<br>
+                  3. Paste the SQL above and click <strong>Run</strong><br>
+                  4. Copy your <strong>Project URL</strong> and <strong>anon key</strong> from <strong>Settings → API</strong><br>
+                  5. Paste both above and click <strong>Save &amp; Apply</strong>
+                </div>
               </div>
             </div>
 
+            <!-- ── OFFLINE QUEUE ── -->
+            <div class="settings-card full" id="offlineQueueCard" style="display:none;">
+              <h3><i class="fas fa-clock-rotate-left"></i> Offline Submission Queue</h3>
+              <p>These submissions were saved to localStorage when Supabase was not yet configured or a network error occurred. You can flush them to Supabase now.</p>
+              <div id="queueList"></div>
+              <div class="btn-row" style="margin-top:14px;">
+                <button class="btn-save" onclick="flushQueue()"><i class="fas fa-cloud-arrow-up"></i> Flush Queue to Supabase</button>
+                <button class="btn-save secondary" onclick="clearQueue()"><i class="fas fa-trash"></i> Discard Queue</button>
+              </div>
+              <div class="save-confirm" id="sc-queue"><i class="fas fa-circle-check"></i> Queue flushed successfully.</div>
+            </div>
+
+            <!-- ── WHATSAPP ── -->
             <div class="settings-card">
               <h3><i class="fab fa-whatsapp"></i> WhatsApp Number</h3>
-              <p>The number used in chat links and the floating button.</p>
+              <p>The number used in chat links and the floating button on the website.</p>
               <div class="s-field">
                 <label>Country Code + Number (no spaces)</label>
                 <input type="tel" id="set-wa" placeholder="971552951578" />
@@ -509,13 +618,14 @@
                 <input type="text" id="set-wa-display" placeholder="+971-55-2951578" />
               </div>
               <button class="btn-save" onclick="saveSetting('whatsapp')"><i class="fas fa-save"></i> Save</button>
-              <div class="save-confirm" id="sc-whatsapp"><i class="fas fa-circle-check"></i> Saved! Update index.html with the snippet.</div>
+              <div class="save-confirm" id="sc-whatsapp"><i class="fas fa-circle-check"></i> Saved! Update index.html with the snippet below.</div>
               <div id="sc-whatsapp-code" style="margin-top:10px;display:none;">
                 <div class="s-field"><label>HTML snippet</label>
                 <textarea readonly rows="3" id="wa-snippet" style="font-family:'DM Mono',monospace;font-size:0.75rem;color:var(--text2);"></textarea></div>
               </div>
             </div>
 
+            <!-- ── EMAIL ── -->
             <div class="settings-card">
               <h3><i class="fas fa-envelope"></i> Contact Email</h3>
               <p>The email address displayed in contact cards and footer.</p>
@@ -531,6 +641,7 @@
               </div>
             </div>
 
+            <!-- ── STATS ── -->
             <div class="settings-card full">
               <h3><i class="fas fa-chart-line"></i> Website Stats (Hero Section)</h3>
               <p>The four stats in the hero section. Update here, then copy the snippet to index.html.</p>
@@ -548,6 +659,7 @@
               </div>
             </div>
 
+            <!-- ── PASSWORD ── -->
             <div class="settings-card full">
               <h3><i class="fas fa-key"></i> Change Password</h3>
               <p>Update your admin password. Must be at least 8 characters. Hash stored in localStorage.</p>
@@ -558,7 +670,7 @@
               </div>
               <button class="btn-save" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
               <div class="save-confirm" id="sc-password"><i class="fas fa-circle-check"></i> Password updated successfully.</div>
-              <div class="save-confirm" id="sc-password-err" style="color:var(--danger);"><i class="fas fa-circle-exclamation"></i> <span id="pw-err-msg"></span></div>
+              <div class="save-confirm err-confirm" id="sc-password-err"><i class="fas fa-circle-exclamation"></i> <span id="pw-err-msg"></span></div>
             </div>
 
           </div>
@@ -605,36 +717,82 @@
 
   <script>
   /* ============================================================
-     VERIDIAN EDGE ADMIN — Google Sheets backend edition
-     Submissions are fetched from / written to Google Sheets
-     via an Apps Script Web App — works from any device worldwide.
+     VERIDIAN EDGE ADMIN — Supabase backend
+     All quote submissions are stored in / read from Supabase.
+     Admin configures the connection via Settings (no code edits).
   ============================================================ */
 
-  // ── PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL HERE ──────────
-  // The DEPLOYED /exec URL — NOT the project editor URL.
-  // ✅ Correct:  https://script.google.com/macros/s/AKfy.../exec
-  // ❌ Wrong:    https://script.google.com/home/projects/...
-  // Runtime URL — starts from localStorage (saved via Settings), falls back to the hard-coded value.
-  const _HARDCODED_URL = 'https://script.google.com/macros/s/AKfycbwN6TdLaVjwUMqEk1tt8bulAQxIUqKyVRSGDklWSK_KB2DFme8wfuIClus3cKt1WbGq/exec';
-  let APPS_SCRIPT_URL = (localStorage.getItem('ve_apps_url') || '').trim() || _HARDCODED_URL;
-
-  // ── ADMIN SECRET ─────────────────────────────────────────────
-  // ⚠ SECURITY: This file is public on GitHub Pages — never store the raw secret here.
-  // The admin panel uses the password you log in with as the Apps Script secret,
-  // so the secret is never in the source code. See enterDash() below.
-  // In Apps Script, set: const ADMIN_SECRET = 'your-strong-secret-here';
-  // Then set the same value as the admin login password in DEFAULT_PASS below.
-  let ADMIN_SECRET = null; // populated from admin password after login
-  // ────────────────────────────────────────────────────────────
-
-  const ADMIN_KEY    = 've_admin_creds';
-  const SETTINGS_KEY = 've_settings';
-  const LOG_KEY      = 've_seclog';
-  const LOCKOUT_KEY  = 've_lockout';
-  const SESSION_KEY  = 've_sess_token';
+  // ── Keys ─────────────────────────────────────────────────────
+  const ADMIN_KEY      = 've_admin_creds';
+  const SETTINGS_KEY   = 've_settings';
+  const LOG_KEY        = 've_seclog';
+  const LOCKOUT_KEY    = 've_lockout';
+  const SESSION_KEY    = 've_sess_token';
+  const SUPABASE_KEY   = 've_supabase_cfg';
+  const OFFLINE_KEY    = 've_offline_queue';
 
   const DEFAULT_USER = 'admin';
   const DEFAULT_PASS = 'Veridian@2025';
+
+  // ── Supabase config (lazy-loaded) ────────────────────────────
+  function getSbCfg() {
+    try { return JSON.parse(localStorage.getItem(SUPABASE_KEY) || 'null'); } catch(_) { return null; }
+  }
+  function sbConfigured() {
+    const c = getSbCfg(); return !!(c && c.url && c.anon_key);
+  }
+
+  // ── Supabase REST helpers ────────────────────────────────────
+  async function sbFetch(path, options = {}) {
+    const cfg = getSbCfg();
+    if (!cfg) throw new Error('Supabase not configured.');
+    const url = cfg.url.replace(/\/$/, '') + path;
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type':  'application/json',
+        'apikey':        cfg.anon_key,
+        'Authorization': 'Bearer ' + cfg.anon_key,
+        ...(options.headers || {}),
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => String(res.status));
+      throw new Error('Supabase ' + res.status + ': ' + text);
+    }
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json') && res.status !== 204) return res.json();
+    return null;
+  }
+
+  // READ: calls the security-definer RPC function that bypasses RLS
+  async function sbGetQuotes() {
+    return sbFetch('/rest/v1/rpc/get_quotes', { method: 'POST', body: '{}' });
+  }
+
+  // UPDATE status
+  async function sbUpdateStatus(id, status) {
+    return sbFetch('/rest/v1/quotes?id=eq.' + encodeURIComponent(id), {
+      method:  'PATCH',
+      headers: { 'Prefer': 'return=minimal' },
+      body:    JSON.stringify({ status }),
+    });
+  }
+
+  // DELETE
+  async function sbDelete(id) {
+    return sbFetch('/rest/v1/quotes?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+  }
+
+  // INSERT (used for offline queue flush)
+  async function sbInsert(row) {
+    const { id: _omit, ts: _omit2, ...payload } = row; // strip local fields
+    return sbFetch('/rest/v1/quotes', {
+      method:  'POST',
+      headers: { 'Prefer': 'return=minimal' },
+      body:    JSON.stringify(payload),
+    });
+  }
 
   // ── Crypto ──────────────────────────────────────────────────
   async function sha256(str) {
@@ -652,9 +810,9 @@
   }
 
   // ── Lockout ─────────────────────────────────────────────────
-  function getLockout()       { const v = localStorage.getItem(LOCKOUT_KEY); return v ? JSON.parse(v) : { attempts:0, until:0 }; }
-  function setLockout(obj)    { localStorage.setItem(LOCKOUT_KEY, JSON.stringify(obj)); }
-  function isLockedOut()      { return getLockout().until > Date.now(); }
+  function getLockout()    { const v = localStorage.getItem(LOCKOUT_KEY); return v ? JSON.parse(v) : { attempts:0, until:0 }; }
+  function setLockout(obj) { localStorage.setItem(LOCKOUT_KEY, JSON.stringify(obj)); }
+  function isLockedOut()   { return getLockout().until > Date.now(); }
   function lockoutRemaining() { return Math.ceil((getLockout().until - Date.now()) / 1000); }
 
   // ── Login ────────────────────────────────────────────────────
@@ -663,14 +821,10 @@
     const user = document.getElementById('loginUser').value.trim();
     const pass = document.getElementById('loginPass').value;
     if (!user || !pass) { showLoginError('Please enter username and password.'); return; }
-
     const creds = await loadCreds();
     if (await sha256(user) === creds.userhash && await sha256(pass) === creds.passhash) {
       setLockout({ attempts:0, until:0 });
-      // Derive the Apps Script secret from the admin password.
-      // The password IS the secret — this way it never appears in source code.
-      ADMIN_SECRET = pass;
-      sessionStorage.setItem(SESSION_KEY, btoa(pass)); // store encoded pass for session restore
+      sessionStorage.setItem(SESSION_KEY, btoa(pass));
       addLog('ok', `Login successful — user: ${user}`);
       enterDash();
     } else {
@@ -719,14 +873,14 @@
   }
 
   function enterDash() {
-    // Show config banner if not set
-    const notConfigured = !APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
-    document.getElementById('configBanner').style.display = notConfigured ? 'block' : 'none';
-    document.getElementById('setupNotice').style.display  = notConfigured ? 'block' : 'none';
+    const configured = sbConfigured();
+    document.getElementById('configBanner').style.display = configured ? 'none' : 'block';
+    document.getElementById('setupNotice').style.display  = configured ? 'none' : 'block';
     document.body.classList.add('authed');
     loadSubmissions();
     loadSettings();
     loadLog();
+    checkOfflineQueue();
     toast('Welcome back, Admin.', 'ok');
   }
 
@@ -737,118 +891,80 @@
     document.getElementById('page-' + name).classList.add('active');
     if (btn) btn.classList.add('active');
     if (name === 'submissions' || name === 'overview') loadSubmissions();
-    if (name === 'settings') loadSettings();
+    if (name === 'settings') { loadSettings(); checkOfflineQueue(); }
     if (name === 'security') loadLog();
   }
 
-  // ── Submissions — fetched from Google Sheets ─────────────────
+  // ── Submissions ──────────────────────────────────────────────
   let allSubmissions = [];
   let activeId = null;
-
-  async function apiCall(payload) {
-    // For READ operations (action=get): use JSONP via a <script> tag.
-    // This bypasses CORS entirely — Apps Script serves a JS callback response.
-    if (payload.action === 'get') {
-      return new Promise((resolve, reject) => {
-        const cbName = '_ve_jsonp_' + Date.now();
-        const script = document.createElement('script');
-        const params = new URLSearchParams({
-          action:   'get',
-          secret:   payload.secret,
-          callback: cbName,
-        });
-        const timer = setTimeout(() => {
-          delete window[cbName];
-          script.remove();
-          reject(new Error('Request timed out. Check your Apps Script URL.'));
-        }, 12000);
-        window[cbName] = (data) => {
-          clearTimeout(timer);
-          delete window[cbName];
-          script.remove();
-          resolve(data);
-        };
-        script.src = APPS_SCRIPT_URL + '?' + params.toString();
-        script.onerror = () => {
-          clearTimeout(timer);
-          delete window[cbName];
-          script.remove();
-          reject(new Error('Script load failed. Check your Apps Script URL.'));
-        };
-        document.head.appendChild(script);
-      });
-    }
-
-    // For WRITE operations (update / delete): POST with text/plain to avoid preflight.
-    // We can't read the response in no-cors mode, but the write succeeds server-side.
-    await fetch(APPS_SCRIPT_URL, {
-      method:  'POST',
-      mode:    'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body:    JSON.stringify(payload),
-    });
-    return { ok: true }; // assume success (no-cors can't read response)
-  }
 
   async function loadSubmissions() {
     if (!requireAuth()) return;
 
-    const notConfigured = !APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
-    if (notConfigured) {
+    if (!sbConfigured()) {
       allSubmissions = [];
       renderTable([], 'submissionsTable');
       renderTable([], 'recentTable');
       updateStats();
+      setConnStatus('unknown', 'Not configured');
       return;
     }
 
-    // Show loading state
     ['submissionsTable','recentTable'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Loading from Google Sheets…</div>';
+      if (el) el.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Loading from Supabase…</div>';
     });
 
     try {
-      const data = await apiCall({ action: 'get', secret: ADMIN_SECRET });
-      if (data.ok) {
-        allSubmissions = data.submissions || [];
-        renderTable(allSubmissions, 'submissionsTable');
-        renderTable(allSubmissions.slice(-5), 'recentTable');
-        updateStats();
-        updateNavBadge();
-      } else {
-        throw new Error(data.error || 'Unknown error');
-      }
+      const data = await sbGetQuotes();
+      allSubmissions = Array.isArray(data) ? data : [];
+      // Normalise field names — Supabase uses created_at, local queue uses ts
+      allSubmissions.forEach(s => { if (!s.timestamp) s.timestamp = s.created_at; });
+      renderTable(allSubmissions, 'submissionsTable');
+      renderTable(allSubmissions.slice(0, 5), 'recentTable');
+      updateStats();
+      updateNavBadge();
+      setConnStatus('ok', 'Connected — ' + allSubmissions.length + ' record(s)');
     } catch (err) {
-      console.error('[VE Admin] Load error:', err);
+      console.error('[VE Admin] Supabase load error:', err);
       ['submissionsTable','recentTable'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>Could not load submissions.<br><small>${esc(err.message)}</small><br><br><button class="btn-sm" onclick="loadSubmissions()">Try again</button></p></div>`;
+        if (el) el.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>Could not load from Supabase.<br><small>${esc(err.message)}</small><br><br><button class="btn-sm" onclick="loadSubmissions()">Try again</button></p></div>`;
       });
-      toast('Failed to load submissions. Check your Apps Script URL.', 'err');
+      setConnStatus('err', err.message.slice(0, 60));
+      toast('Failed to load submissions: ' + err.message, 'err');
     }
   }
 
+  function setConnStatus(state, label) {
+    ['connStatusBadge', 'sbConnStatus'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.className = 'conn-status ' + state;
+      el.querySelector('span').textContent = label;
+    });
+  }
+
   function updateNavBadge() {
-    const unread = allSubmissions.filter(s => s.status === 'new').length;
+    const unread = allSubmissions.filter(s => (s.status || 'new') === 'new').length;
     const badge  = document.getElementById('navBadge');
-    badge.textContent    = unread;
-    badge.style.display  = unread ? 'inline' : 'none';
+    badge.textContent   = unread;
+    badge.style.display = unread ? 'inline' : 'none';
   }
 
   function updateStats() {
     const now      = new Date();
     const month    = now.getMonth(), year = now.getFullYear();
     const thisMonth = allSubmissions.filter(s => {
-      const d = new Date(s.timestamp || s.ts);
+      const d = new Date(s.timestamp || s.created_at || s.ts);
       return d.getMonth() === month && d.getFullYear() === year;
     }).length;
     document.getElementById('ov-total').textContent   = allSubmissions.length;
-    document.getElementById('ov-unread').textContent  = allSubmissions.filter(s => s.status === 'new').length;
+    document.getElementById('ov-unread').textContent  = allSubmissions.filter(s => (s.status||'new') === 'new').length;
     document.getElementById('ov-replied').textContent = allSubmissions.filter(s => s.status === 'replied').length;
     document.getElementById('ov-month').textContent   = thisMonth;
     document.getElementById('ov-month-label').textContent = now.toLocaleString('default', { month:'long' });
-    // also update subCount
     document.getElementById('subCount').textContent   = `All Submissions (${allSubmissions.length})`;
   }
 
@@ -859,16 +975,16 @@
       el.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No submissions yet. They'll appear here once visitors submit the quote form.</p></div>`;
       return;
     }
-    const rows = data.slice().reverse().map(s => `
-      <tr onclick="openModal('${esc(s.id || s.timestamp)}')" style="cursor:pointer;">
+    const rows = data.map(s => `
+      <tr onclick="openModal('${esc(s.id)}')" style="cursor:pointer;">
         <td class="td-name">${esc(s.name)}</td>
         <td>${esc(s.service)}</td>
         <td class="td-mono">${esc(s.phone)}</td>
         <td class="td-mono">${esc(s.location || '—')}</td>
         <td><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></td>
-        <td class="td-mono" style="white-space:nowrap;">${formatDate(s.timestamp || s.ts)}</td>
+        <td class="td-mono" style="white-space:nowrap;">${formatDate(s.created_at || s.timestamp || s.ts)}</td>
         <td onclick="event.stopPropagation()">
-          <button class="btn-icon del" title="Delete" onclick="confirmDelete('${esc(s.id || s.timestamp)}')"><i class="fas fa-trash-can"></i></button>
+          <button class="btn-icon del" title="Delete" onclick="confirmDelete('${esc(s.id)}')"><i class="fas fa-trash-can"></i></button>
         </td>
       </tr>`).join('');
     el.innerHTML = `<table>
@@ -890,7 +1006,7 @@
 
   // ── Modal ────────────────────────────────────────────────────
   function openModal(id) {
-    const s = allSubmissions.find(x => (x.id || x.timestamp) === id);
+    const s = allSubmissions.find(x => x.id === id);
     if (!s) return;
     activeId = id;
     document.getElementById('modalBody').innerHTML = `
@@ -906,7 +1022,7 @@
       <div class="modal-field"><label>Message / Details</label><p style="white-space:pre-wrap;">${esc(s.message || 'No message.')}</p></div>
       <div class="modal-row">
         <div class="modal-field"><label>Status</label><p><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></p></div>
-        <div class="modal-field"><label>Received</label><p>${formatDate(s.timestamp || s.ts, true)}</p></div>
+        <div class="modal-field"><label>Received</label><p>${formatDate(s.created_at || s.timestamp || s.ts, true)}</p></div>
       </div>`;
     document.getElementById('modalOverlay').classList.add('open');
     if ((s.status || 'new') === 'new') markStatus('read', false);
@@ -920,15 +1036,12 @@
 
   async function markStatus(status, showToast = true) {
     if (!activeId) return;
-    const idx = allSubmissions.findIndex(s => (s.id || s.timestamp) === activeId);
+    const idx = allSubmissions.findIndex(s => s.id === activeId);
     if (idx < 0) return;
     allSubmissions[idx].status = status;
-
-    // Update in Google Sheets
     try {
-      await apiCall({ action: 'update', secret: ADMIN_SECRET, id: activeId, status });
-    } catch (err) { toast('Could not update status in Sheet.', 'err'); }
-
+      await sbUpdateStatus(activeId, status);
+    } catch (err) { toast('Could not update status in Supabase: ' + err.message, 'err'); }
     renderTable(allSubmissions, 'submissionsTable');
     updateNavBadge(); updateStats();
     if (showToast) { toast(`Marked as ${status}.`, 'ok'); closeModal(); }
@@ -937,9 +1050,9 @@
   async function deleteEntry() {
     if (!activeId) return;
     try {
-      await apiCall({ action: 'delete', secret: ADMIN_SECRET, id: activeId });
-    } catch (err) { toast('Could not delete from Sheet.', 'err'); return; }
-    allSubmissions = allSubmissions.filter(s => (s.id || s.timestamp) !== activeId);
+      await sbDelete(activeId);
+    } catch (err) { toast('Could not delete: ' + err.message, 'err'); return; }
+    allSubmissions = allSubmissions.filter(s => s.id !== activeId);
     renderTable(allSubmissions, 'submissionsTable');
     updateNavBadge(); updateStats();
     toast('Submission deleted.', 'ok');
@@ -949,13 +1062,13 @@
 
   function confirmDelete(id) {
     activeId = id;
-    if (confirm('Delete this submission from Google Sheets? This cannot be undone.')) deleteEntry();
+    if (confirm('Delete this submission from Supabase? This cannot be undone.')) deleteEntry();
   }
 
   // ── CSV Export ───────────────────────────────────────────────
   function exportCSV() {
     if (!allSubmissions.length) { toast('No submissions to export.', 'err'); return; }
-    const cols = ['name','phone','email','service','location','message','status','timestamp'];
+    const cols = ['name','phone','email','service','location','message','status','created_at'];
     const csv  = [cols.join(','), ...allSubmissions.map(s =>
       cols.map(c => `"${(s[c]||'').toString().replace(/"/g,'""')}"`).join(',')
     )].join('\r\n');
@@ -976,76 +1089,125 @@
   };
 
   function loadSettings() {
-    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null') || DEFAULT_SETTINGS;
-    document.getElementById('set-wa').value            = s.wa || '';
-    document.getElementById('set-wa-display').value    = s.wa_display || '';
-    document.getElementById('set-email').value         = s.email || '';
-    document.getElementById('stat-projects').value     = s.stat_projects || '';
-    document.getElementById('stat-years').value        = s.stat_years || '';
-    document.getElementById('stat-satisfaction').value = s.stat_satisfaction || '';
-    document.getElementById('stat-rating').value       = s.stat_rating || '';
-    // Show the currently active URL (localStorage wins, then the hardcoded fallback)
-    document.getElementById('set-apps-url').value = APPS_SCRIPT_URL || '';
+    const s   = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null') || DEFAULT_SETTINGS;
+    const cfg = getSbCfg() || {};
+    document.getElementById('sb-url').value              = cfg.url || '';
+    document.getElementById('sb-anon').value             = cfg.anon_key || '';
+    document.getElementById('set-wa').value              = s.wa || '';
+    document.getElementById('set-wa-display').value      = s.wa_display || '';
+    document.getElementById('set-email').value           = s.email || '';
+    document.getElementById('stat-projects').value       = s.stat_projects || '';
+    document.getElementById('stat-years').value          = s.stat_years || '';
+    document.getElementById('stat-satisfaction').value   = s.stat_satisfaction || '';
+    document.getElementById('stat-rating').value         = s.stat_rating || '';
+    // Update connection status badge in settings
+    if (sbConfigured()) {
+      setConnStatus('ok', 'Configured');
+    } else {
+      setConnStatus('unknown', 'Not configured');
+    }
   }
 
-  function saveAppsUrl() {
-    const url = document.getElementById('set-apps-url').value.trim();
-    if (!url || !url.startsWith('https://script.google.com/macros/s/')) {
-      toast('Please enter a valid Apps Script /exec URL.', 'err');
-      return;
+  // ── Save Supabase config ──────────────────────────────────────
+  function saveSupabaseConfig() {
+    if (!requireAuth()) return;
+    const url     = document.getElementById('sb-url').value.trim();
+    const anonKey = document.getElementById('sb-anon').value.trim();
+    const errEl   = document.getElementById('sc-supabase-err');
+    const okEl    = document.getElementById('sc-supabase');
+    errEl.classList.remove('show'); okEl.classList.remove('show');
+
+    if (!url || !url.startsWith('https://')) {
+      document.getElementById('sb-err-msg').textContent = 'Enter a valid Supabase Project URL (starts with https://).';
+      errEl.classList.add('show'); return;
     }
-    localStorage.setItem('ve_apps_url', url);
-    APPS_SCRIPT_URL = url;  // apply immediately — no page reload needed
-    showConfirm('apps-url');
+    if (!anonKey || anonKey.length < 20) {
+      document.getElementById('sb-err-msg').textContent = 'Enter a valid anon key.';
+      errEl.classList.add('show'); return;
+    }
+    localStorage.setItem(SUPABASE_KEY, JSON.stringify({ url, anon_key: anonKey }));
     document.getElementById('configBanner').style.display = 'none';
     document.getElementById('setupNotice').style.display  = 'none';
-    toast('URL saved & applied — loading submissions now…', 'ok');
+    okEl.classList.add('show');
+    setTimeout(() => okEl.classList.remove('show'), 4000);
+    toast('Supabase config saved — loading submissions…', 'ok');
+    addLog('info', 'Supabase config updated');
     loadSubmissions();
   }
 
-  async function testAppsUrl() {
-    const url = document.getElementById('set-apps-url').value.trim();
-    if (!url || !url.startsWith('https://script.google.com/macros/s/')) {
-      toast('Enter a valid Apps Script /exec URL first.', 'err');
-      return;
-    }
+  // ── Test Supabase connection ──────────────────────────────────
+  async function testSupabaseConnection() {
+    if (!requireAuth()) return;
+    const url     = document.getElementById('sb-url').value.trim();
+    const anonKey = document.getElementById('sb-anon').value.trim();
+    if (!url || !anonKey) { toast('Enter URL and anon key first.', 'err'); return; }
+
+    // Temporarily apply for test
+    const prev = localStorage.getItem(SUPABASE_KEY);
+    localStorage.setItem(SUPABASE_KEY, JSON.stringify({ url, anon_key: anonKey }));
+    setConnStatus('unknown', 'Testing…');
     toast('Testing connection…', 'info');
+
     try {
-      // Use a quick JSONP probe with the current ADMIN_SECRET
-      const testSecret = ADMIN_SECRET || DEFAULT_PASS;
-      const result = await new Promise((resolve, reject) => {
-        const cbName = '_ve_test_' + Date.now();
-        const script = document.createElement('script');
-        const params = new URLSearchParams({ action: 'get', secret: testSecret, callback: cbName });
-        const timer = setTimeout(() => {
-          delete window[cbName]; script.remove();
-          reject(new Error('Timed out — URL may be wrong or deployment is not live.'));
-        }, 10000);
-        window[cbName] = (data) => {
-          clearTimeout(timer); delete window[cbName]; script.remove(); resolve(data);
-        };
-        script.onerror = () => {
-          clearTimeout(timer); delete window[cbName]; script.remove();
-          reject(new Error('Script load failed — check the URL and make sure access is set to "Anyone".'));
-        };
-        script.src = url + '?' + params.toString();
-        document.head.appendChild(script);
-      });
-      if (result.ok) {
-        toast('✓ Connection successful — ' + (result.submissions?.length ?? 0) + ' submission(s) found.', 'ok');
-      } else {
-        toast('Connected but got error: ' + (result.error || 'Unknown. Check ADMIN_SECRET matches your password.'), 'err');
-      }
+      const data = await sbGetQuotes();
+      const count = Array.isArray(data) ? data.length : '?';
+      setConnStatus('ok', 'Connected — ' + count + ' record(s)');
+      toast('✓ Connection successful — ' + count + ' quote(s) found.', 'ok');
     } catch (err) {
-      const errEl = document.getElementById('apps-url-err-msg');
-      errEl.textContent = err.message;
-      const el = document.getElementById('sc-apps-url-err');
-      el.classList.add('show');
-      setTimeout(() => el.classList.remove('show'), 6000);
+      setConnStatus('err', err.message.slice(0, 50));
       toast('Connection failed: ' + err.message, 'err');
+      // Restore previous config on failure
+      if (prev) localStorage.setItem(SUPABASE_KEY, prev);
+      else localStorage.removeItem(SUPABASE_KEY);
     }
   }
 
+  // ── Copy SQL ─────────────────────────────────────────────────
+  function copySql() {
+    const sql = document.getElementById('sqlSnippet').textContent;
+    navigator.clipboard.writeText(sql).then(() => toast('SQL copied to clipboard.', 'ok'));
+  }
+
+  // ── Offline queue ─────────────────────────────────────────────
+  function checkOfflineQueue() {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+    const card  = document.getElementById('offlineQueueCard');
+    if (!queue.length) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    const list = document.getElementById('queueList');
+    list.innerHTML = `<div style="margin-bottom:10px;"><span class="queue-badge"><i class="fas fa-clock"></i> ${queue.length} pending submission(s)</span></div>` +
+      queue.map(s => `<div style="font-size:0.82rem;color:var(--text2);padding:4px 0;">${esc(s.name || '—')} · ${esc(s.service || '—')} · ${formatDate(s.ts, true)}</div>`).join('');
+  }
+
+  async function flushQueue() {
+    if (!sbConfigured()) { toast('Configure Supabase first.', 'err'); return; }
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+    if (!queue.length) { toast('Queue is empty.', 'info'); return; }
+    let ok = 0, fail = 0;
+    for (const row of queue) {
+      try { await sbInsert(row); ok++; }
+      catch (_) { fail++; }
+    }
+    if (fail === 0) {
+      localStorage.removeItem(OFFLINE_KEY);
+      showConfirm('queue');
+      toast(`Flushed ${ok} submission(s) to Supabase.`, 'ok');
+      addLog('info', `Flushed ${ok} offline submission(s) to Supabase`);
+    } else {
+      toast(`Partial flush: ${ok} OK, ${fail} failed.`, 'err');
+    }
+    checkOfflineQueue();
+    loadSubmissions();
+  }
+
+  function clearQueue() {
+    if (!confirm('Discard all offline queued submissions? This cannot be undone.')) return;
+    localStorage.removeItem(OFFLINE_KEY);
+    checkOfflineQueue();
+    toast('Offline queue cleared.', 'ok');
+  }
+
+  // ── Misc settings ─────────────────────────────────────────────
   function saveSetting(type) {
     if (!requireAuth()) return;
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null') || { ...DEFAULT_SETTINGS };
@@ -1156,9 +1318,9 @@
   }
 
   // ── Init ─────────────────────────────────────────────────────
-  loadCreds(); // pre-hash defaults on first load
+  loadCreds();
   const _sess = sessionStorage.getItem(SESSION_KEY);
-  if (_sess) { try { ADMIN_SECRET = atob(_sess); } catch(_){} enterDash(); }
+  if (_sess) { enterDash(); }
   </script>
 </body>
 </html>
