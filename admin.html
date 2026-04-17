@@ -743,9 +743,20 @@
     } catch { return null; }
   }
 
+  // The static key MUST match STATIC_ENC_KEY in script.js exactly
+  const STATIC_ENC_KEY = 'veridian_default_2025_key';
+
   // Derive AES password from stored hash (so we don't store plaintext key)
   function getEncKey() {
     return sessionStorage.getItem(SESSION_KEY) || 'fallback';
+  }
+
+  // Try decrypting with the static key first (used by script.js / the public form),
+  // then fall back to the session-derived key (used when admin re-encrypts data).
+  async function aesDecryptAuto(b64) {
+    const decoded = await aesDecrypt(b64, STATIC_ENC_KEY);
+    if (decoded !== null) return decoded;
+    return await aesDecrypt(b64, getEncKey());
   }
 
   // ===== CREDENTIAL MANAGEMENT =====
@@ -879,7 +890,7 @@
     const raw = localStorage.getItem(DATA_KEY);
     if (!raw) { allSubmissions = []; }
     else {
-      const dec = await aesDecrypt(raw, getEncKey());
+      const dec = await aesDecryptAuto(raw);
       allSubmissions = dec || [];
     }
     renderTable(allSubmissions);
@@ -1240,6 +1251,14 @@ href="https://wa.me/${s.wa}"
   }
   // Pre-init credentials on first load
   loadCreds();
+
+  // Auto-refresh submissions when form is submitted in another tab (same origin)
+  window.addEventListener('storage', (e) => {
+    if (e.key === 've_submissions' && sessionStorage.getItem('ve_sess_token')) {
+      loadSubmissions();
+      toast('New submission received!', 'ok');
+    }
+  });
   </script>
 </body>
 </html>
