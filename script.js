@@ -1,21 +1,19 @@
 /* ============================================================
    VERIDIAN EDGE TECHNICAL SERVICES LLC
-   script.js — Interactions & Functionality
-   Backend: Supabase (configured via Admin → Settings)
+   script.js — Public site interactions + quote form
+   Backend: Supabase (anon key + RLS)
    ============================================================ */
 
-// ── SUPABASE CONFIG ──────────────────────────────────────────
-// These are set by the Admin in the Settings panel and stored
-// in localStorage. No hardcoded secrets needed.
-// Required: Supabase Project URL + anon/public API key.
-// The anon key is safe to expose client-side — row-level security
-// on the "quotes" table restricts reads to authenticated users only.
-function _getSupabaseConfig() {
-  try {
-    return JSON.parse(localStorage.getItem('ve_supabase_cfg') || 'null');
-  } catch (_) { return null; }
-}
-// ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// ⚙  SUPABASE CONFIG — paste your values here (see SUPABASE_SETUP.md)
+// ═══════════════════════════════════════════════════════════════
+const SUPABASE_URL      = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
+// ═══════════════════════════════════════════════════════════════
+// The anon key is safe to expose publicly — RLS policies on the
+// `quotes` table only allow anonymous INSERTs. Reading/updating/
+// deleting requires a logged-in admin session.
+// ═══════════════════════════════════════════════════════════════
 
 
 // ===== NAVBAR SCROLL =====
@@ -120,45 +118,47 @@ async function submitForm(e) {
     status:   'new',
   };
 
-  const cfg = _getSupabaseConfig();
-
-  // ── Supabase not configured yet → local fallback ──────────
-  if (!cfg || !cfg.url || !cfg.anon_key) {
+  // If keys haven't been filled in yet — fall back to local queue
+  if (!_configOk()) {
     _localFallbackSave(payload);
+    console.warn('[Veridian] Supabase not configured — saved locally.');
     _showSuccess(form, btn, success);
-    console.warn('[Veridian] Supabase not configured — saved to localStorage queue.');
     return;
   }
 
   try {
-    await _supabaseInsert(cfg, payload);
+    await _supabaseInsert(payload);
     _showSuccess(form, btn, success);
   } catch (err) {
-    console.error('[Veridian] Supabase insert error:', err);
-    // Network failure fallback — save locally so data is never lost
+    console.error('[Veridian] Supabase insert failed:', err);
+    // Network hiccup → keep the data so it's never lost
     _localFallbackSave(payload);
     _showSuccess(form, btn, success);
   }
 }
 
-// ── Supabase REST insert ──────────────────────────────────────
-// Uses the Supabase REST API directly — no npm package needed.
-// Inserts one row into the "quotes" table.
-async function _supabaseInsert(cfg, payload) {
-  const url = cfg.url.replace(/\/$/, '') + '/rest/v1/quotes';
+function _configOk() {
+  return SUPABASE_URL && SUPABASE_ANON_KEY
+      && !SUPABASE_URL.includes('YOUR_PROJECT')
+      && !SUPABASE_ANON_KEY.includes('YOUR_ANON_KEY');
+}
+
+// Direct REST insert — no npm dependency needed for the public form
+async function _supabaseInsert(payload) {
+  const url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/quotes';
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',
-      'apikey':        cfg.anon_key,
-      'Authorization': 'Bearer ' + cfg.anon_key,
+      'apikey':        SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
       'Prefer':        'return=minimal',
     },
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => res.status);
-    throw new Error('Supabase error ' + res.status + ': ' + text);
+    throw new Error('Supabase ' + res.status + ': ' + text);
   }
 }
 
@@ -174,7 +174,8 @@ function _showSuccess(form, btn, success) {
   }, 5000);
 }
 
-// ── localStorage fallback (network failure or not configured) ──
+// localStorage fallback — preserves submissions if the network drops
+// or if keys haven't been pasted in yet. Admin can flush them later.
 function _genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }

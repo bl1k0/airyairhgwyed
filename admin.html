@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -76,18 +77,24 @@
       display: flex; align-items: center; justify-content: center; gap: 8px;
     }
     .btn-login:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-login:disabled { opacity: .6; cursor: not-allowed; }
     .login-error {
       background: rgba(240,64,64,0.1); border: 1px solid rgba(240,64,64,0.3);
       color: var(--danger); border-radius: var(--radius);
       padding: 10px 14px; font-size: 0.85rem; margin-top: 14px;
       display: none; align-items: center; gap: 8px;
     }
-    .lockout-timer { font-size: 0.8rem; color: var(--warn); margin-top: 10px; text-align: center; display: none; }
+    .login-hint {
+      color: var(--text3); font-size: 0.78rem; margin-top: 20px;
+      text-align: center; line-height: 1.6;
+    }
+    .login-hint a { color: var(--accent); text-decoration: none; cursor: pointer; }
+    .login-hint a:hover { text-decoration: underline; }
 
     .setup-notice {
-      background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25);
+      background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25);
       border-radius: var(--radius); padding: 12px 16px; margin-top: 16px;
-      font-size: 0.8rem; color: var(--accent); line-height: 1.5; display: none;
+      font-size: 0.8rem; color: var(--warn); line-height: 1.5; display: none;
     }
 
     /* ===== ADMIN DASHBOARD ===== */
@@ -117,7 +124,13 @@
       padding: 4px 10px; border-radius: 99px; display: flex; align-items: center; gap: 5px;
     }
     .badge-live::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--success); animation: pulse 1.5s infinite; }
+    .badge-live.off { background: rgba(148,163,184,0.1); border-color: var(--border2); color: var(--text2); }
+    .badge-live.off::before { background: var(--text3); animation: none; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .user-chip {
+      font-size: 0.78rem; color: var(--text2); padding: 5px 12px;
+      background: var(--bg3); border: 1px solid var(--border2); border-radius: 99px;
+    }
     .btn-logout {
       background: rgba(240,64,64,0.1); border: 1px solid rgba(240,64,64,0.2);
       color: var(--danger); padding: 7px 14px; border-radius: 8px;
@@ -195,6 +208,11 @@
     tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: rgba(255,255,255,0.025); }
+    tbody tr.fresh { background: rgba(79,142,247,0.08); animation: flashNew 1.5s ease; }
+    @keyframes flashNew {
+      0%   { background: rgba(79,142,247,0.28); }
+      100% { background: rgba(79,142,247,0.08); }
+    }
     td { padding: 13px 16px; font-size: 0.85rem; vertical-align: top; }
     td.td-mono { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--text2); }
     .td-name { font-weight: 600; }
@@ -219,16 +237,15 @@
 
     /* Config banner */
     .config-banner {
-      background: rgba(79,142,247,0.06); border: 1px solid rgba(79,142,247,0.2);
+      background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2);
       border-radius: var(--radius); padding: 16px 20px; margin-bottom: 24px;
-      font-size: 0.875rem; color: var(--accent); line-height: 1.6; display: none;
+      font-size: 0.875rem; color: var(--warn); line-height: 1.6;
     }
     .config-banner strong { display: block; margin-bottom: 4px; font-size: 0.95rem; color: var(--text); }
     .config-banner code {
       background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;
       font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--text);
     }
-    .config-banner a { color: var(--accent); }
 
     /* Modal */
     .modal-overlay {
@@ -284,39 +301,13 @@
       cursor: pointer; transition: opacity .2s; display: inline-flex; align-items: center; gap: 8px; margin-top: 4px;
     }
     .btn-save:hover { opacity: .88; }
-    .btn-save.secondary {
-      background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
-    }
+    .btn-save.secondary { background: var(--bg3); border: 1px solid var(--border2); color: var(--text); }
     .btn-save.secondary:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
     .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
     .save-confirm { display: none; align-items: center; gap: 6px; color: var(--success); font-size: 0.8rem; margin-top: 10px; }
     .save-confirm.show { display: flex; animation: fadeIn .2s ease; }
     .save-confirm.err-confirm { color: var(--danger); }
     .stats-edit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
-
-    /* Supabase SQL snippet box */
-    .sql-box {
-      background: #0d1117; border: 1px solid var(--border2); border-radius: 8px;
-      padding: 14px 16px; font-family: 'DM Mono', monospace; font-size: 0.75rem;
-      color: #a9c5e8; line-height: 1.7; overflow-x: auto; white-space: pre; margin-top: 10px;
-    }
-    .sql-copy-btn {
-      margin-top: 8px; padding: 6px 14px; background: var(--bg3); border: 1px solid var(--border2);
-      color: var(--text2); border-radius: 6px; font-family: inherit; font-size: 0.75rem;
-      cursor: pointer; transition: all .15s;
-    }
-    .sql-copy-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-    /* Connection status indicator */
-    .conn-status {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-size: 0.78rem; padding: 5px 12px; border-radius: 99px; font-weight: 600;
-      border: 1px solid transparent;
-    }
-    .conn-status.unknown { background: rgba(148,163,184,0.1); color: var(--text2); border-color: var(--border); }
-    .conn-status.ok      { background: rgba(34,197,94,0.1);   color: var(--success); border-color: rgba(34,197,94,0.3); }
-    .conn-status.err     { background: rgba(240,64,64,0.1);   color: var(--danger);  border-color: rgba(240,64,64,0.3); }
-    .conn-status::before { content:''; width:7px; height:7px; border-radius:50%; background:currentColor; }
 
     /* Offline queue badge */
     .queue-badge {
@@ -377,24 +368,26 @@
       <h2>Sign In</h2>
       <p>Restricted access. Authorised personnel only.</p>
       <div class="field-group">
-        <label>Username</label>
-        <input type="text" id="loginUser" autocomplete="off" placeholder="Enter username" />
+        <label>Email</label>
+        <input type="email" id="loginEmail" autocomplete="username" placeholder="you@veridianedgellc.com" />
       </div>
       <div class="field-group">
         <label>Password</label>
-        <input type="password" id="loginPass" placeholder="••••••••" />
+        <input type="password" id="loginPass" autocomplete="current-password" placeholder="••••••••" />
       </div>
-      <button class="btn-login" onclick="doLogin()">
-        <i class="fas fa-lock-open"></i> Sign In
+      <button class="btn-login" id="loginBtn" onclick="doLogin()">
+        <i class="fas fa-lock-open"></i> <span>Sign In</span>
       </button>
       <div class="login-error" id="loginError">
         <i class="fas fa-circle-exclamation"></i>
         <span id="loginErrorMsg">Invalid credentials.</span>
       </div>
-      <div class="lockout-timer" id="lockoutTimer"></div>
+      <div class="login-hint">
+        Forgot your password? <a onclick="sendReset()">Send reset email</a>
+      </div>
       <div class="setup-notice" id="setupNotice">
-        <strong>ℹ Supabase not configured yet.</strong><br>
-        After logging in, go to <strong>Settings → Supabase Connection</strong> to connect your database.
+        <strong>⚠ Supabase not configured.</strong><br>
+        Paste your <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> at the top of <code>admin.html</code> and <code>script.js</code>. See <code>SUPABASE_SETUP.md</code>.
       </div>
     </div>
   </div>
@@ -410,7 +403,8 @@
         </div>
       </div>
       <div class="topbar-right">
-        <span class="badge-live">Live</span>
+        <span class="badge-live off" id="liveBadge">Connecting…</span>
+        <span class="user-chip" id="userChip">—</span>
         <button class="btn-logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
       </div>
     </div>
@@ -433,7 +427,7 @@
             <i class="fas fa-sliders"></i> Settings
           </button>
           <button class="nav-item" onclick="showPage('security', this)">
-            <i class="fas fa-shield-halved"></i> Security Log
+            <i class="fas fa-shield-halved"></i> Activity Log
           </button>
         </div>
       </aside>
@@ -444,12 +438,7 @@
         <div class="page active" id="page-overview">
           <div class="page-header">
             <h1>Overview</h1>
-            <p>Live snapshot of quote submissions from Supabase — accessible from any device worldwide.</p>
-          </div>
-          <div class="config-banner" id="configBanner">
-            <strong>⚠ Supabase not configured yet</strong>
-            Go to <strong>Settings → Supabase Connection</strong> and enter your Project URL and anon key.
-            Quote form submissions will be saved to localStorage until then.
+            <p>Live snapshot of quote submissions. New requests appear here instantly.</p>
           </div>
           <div class="stats-row">
             <div class="stat-card accent">
@@ -477,7 +466,6 @@
             <div class="table-toolbar">
               <h3>Recent Submissions</h3>
               <div class="toolbar-right">
-                <span id="connStatusBadge" class="conn-status unknown"><span>Not connected</span></span>
                 <button class="btn-sm" onclick="loadSubmissions()"><i class="fas fa-rotate-right"></i> Refresh</button>
               </div>
             </div>
@@ -489,7 +477,7 @@
         <div class="page" id="page-submissions">
           <div class="page-header">
             <h1>Quote Requests</h1>
-            <p>All form submissions stored in Supabase — real-time, accessible from any device, anywhere.</p>
+            <p>All customer form submissions. Updates in real-time as new ones arrive.</p>
           </div>
           <div class="table-wrap">
             <div class="table-toolbar">
@@ -508,95 +496,14 @@
         <div class="page" id="page-settings">
           <div class="page-header">
             <h1>Settings</h1>
-            <p>Configure your Supabase connection, contact details, and website stats.</p>
+            <p>Manage contact details, website stats, and your admin password.</p>
           </div>
           <div class="settings-grid">
-
-            <!-- ── SUPABASE CONNECTION ── -->
-            <div class="settings-card full" style="background:rgba(79,142,247,0.04);border-color:rgba(79,142,247,0.2);">
-              <h3><i class="fas fa-database"></i> Supabase Connection</h3>
-              <p>Enter your Supabase project URL and anon key. These are stored in your browser's localStorage and used by both the quote form and this admin panel. The anon key is safe to use client-side with proper Row Level Security.</p>
-
-              <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
-                <div class="s-field" style="flex:1;min-width:260px;">
-                  <label>Project URL</label>
-                  <input type="url" id="sb-url" placeholder="https://xxxxxxxxxxxx.supabase.co" style="font-family:'DM Mono',monospace;font-size:0.82rem;" />
-                  <div class="hint">Found in Supabase Dashboard → Project Settings → API</div>
-                </div>
-                <div class="s-field" style="flex:1;min-width:260px;">
-                  <label>Anon / Public Key</label>
-                  <input type="text" id="sb-anon" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-family:'DM Mono',monospace;font-size:0.82rem;" />
-                  <div class="hint">Use the <strong>anon</strong> key — never the service_role key.</div>
-                </div>
-              </div>
-              <div class="btn-row">
-                <button class="btn-save" onclick="saveSupabaseConfig()"><i class="fas fa-save"></i> Save &amp; Apply</button>
-                <button class="btn-save secondary" onclick="testSupabaseConnection()"><i class="fas fa-plug"></i> Test Connection</button>
-                <span id="sbConnStatus" class="conn-status unknown" style="margin-left:6px;"><span>Not tested</span></span>
-              </div>
-              <div class="save-confirm" id="sc-supabase"><i class="fas fa-circle-check"></i> Config saved — submissions reloading now.</div>
-              <div class="save-confirm err-confirm" id="sc-supabase-err"><i class="fas fa-circle-exclamation"></i> <span id="sb-err-msg"></span></div>
-
-              <!-- SQL Setup Guide -->
-              <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
-                <div style="font-size:0.875rem;font-weight:700;margin-bottom:10px;color:var(--text);">
-                  <i class="fas fa-terminal" style="color:var(--accent);margin-right:6px;"></i>Database Setup — Run this SQL once in Supabase SQL Editor
-                </div>
-                <div class="sql-box" id="sqlSnippet">-- 1. Create the quotes table
-CREATE TABLE IF NOT EXISTS public.quotes (
-  id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  name        text NOT NULL,
-  phone       text NOT NULL,
-  email       text,
-  service     text NOT NULL,
-  location    text,
-  message     text,
-  status      text NOT NULL DEFAULT 'new',
-  created_at  timestamptz DEFAULT now()
-);
-
--- 2. Enable Row Level Security
-ALTER TABLE public.quotes ENABLE ROW LEVEL SECURITY;
-
--- 3. Allow anonymous INSERT (form submissions from your website)
-CREATE POLICY "Allow public insert"
-  ON public.quotes FOR INSERT
-  TO anon
-  WITH CHECK (true);
-
--- 4. BLOCK anonymous SELECT (admin reads via service_role or RLS bypass)
---    The admin panel uses your anon key + a server-side function OR
---    you can grant select to authenticated only.
---    Option A (simplest — recommended): create a Postgres function
---    that the admin calls with the anon key, bypassing RLS.
---    Run the function below:
-
-CREATE OR REPLACE FUNCTION public.get_quotes()
-RETURNS SETOF public.quotes
-LANGUAGE sql
-SECURITY DEFINER   -- runs as owner, bypasses RLS
-AS $$
-  SELECT * FROM public.quotes ORDER BY created_at DESC;
-$$;
-
--- Grant execute to anon so the admin panel can call it
-GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
-                <button class="sql-copy-btn" onclick="copySql()"><i class="fas fa-copy"></i> Copy SQL</button>
-                <div style="margin-top:10px;font-size:0.78rem;color:var(--text2);line-height:1.8;">
-                  <strong style="color:var(--text);">Step-by-step:</strong><br>
-                  1. Go to <a href="https://supabase.com/dashboard" target="_blank" style="color:var(--accent);">supabase.com/dashboard</a> → your project<br>
-                  2. Click <strong>SQL Editor</strong> in the left sidebar<br>
-                  3. Paste the SQL above and click <strong>Run</strong><br>
-                  4. Copy your <strong>Project URL</strong> and <strong>anon key</strong> from <strong>Settings → API</strong><br>
-                  5. Paste both above and click <strong>Save &amp; Apply</strong>
-                </div>
-              </div>
-            </div>
 
             <!-- ── OFFLINE QUEUE ── -->
             <div class="settings-card full" id="offlineQueueCard" style="display:none;">
               <h3><i class="fas fa-clock-rotate-left"></i> Offline Submission Queue</h3>
-              <p>These submissions were saved to localStorage when Supabase was not yet configured or a network error occurred. You can flush them to Supabase now.</p>
+              <p>Submissions that were saved locally because the customer's browser couldn't reach Supabase at submit time. Flush them to your database now.</p>
               <div id="queueList"></div>
               <div class="btn-row" style="margin-top:14px;">
                 <button class="btn-save" onclick="flushQueue()"><i class="fas fa-cloud-arrow-up"></i> Flush Queue to Supabase</button>
@@ -659,14 +566,13 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
               </div>
             </div>
 
-            <!-- ── PASSWORD ── -->
+            <!-- ── PASSWORD (Supabase Auth) ── -->
             <div class="settings-card full">
               <h3><i class="fas fa-key"></i> Change Password</h3>
-              <p>Update your admin password. Must be at least 8 characters. Hash stored in localStorage.</p>
+              <p>Updates your Supabase Auth password. You'll stay signed in on this device; other devices will need to re-login.</p>
               <div class="modal-row">
-                <div class="s-field"><label>Current Password</label><input type="password" id="pw-current" placeholder="••••••••" /></div>
-                <div class="s-field"><label>New Password</label><input type="password" id="pw-new" placeholder="••••••••" /></div>
-                <div class="s-field"><label>Confirm New Password</label><input type="password" id="pw-confirm" placeholder="••••••••" /></div>
+                <div class="s-field"><label>New Password</label><input type="password" id="pw-new" placeholder="At least 8 characters" /></div>
+                <div class="s-field"><label>Confirm New Password</label><input type="password" id="pw-confirm" placeholder="Repeat" /></div>
               </div>
               <button class="btn-save" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
               <div class="save-confirm" id="sc-password"><i class="fas fa-circle-check"></i> Password updated successfully.</div>
@@ -676,15 +582,15 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
           </div>
         </div>
 
-        <!-- SECURITY LOG -->
+        <!-- SECURITY / ACTIVITY LOG -->
         <div class="page" id="page-security">
           <div class="page-header">
-            <h1>Security Log</h1>
-            <p>Login attempts and admin actions recorded in this browser session.</p>
+            <h1>Activity Log</h1>
+            <p>Local activity recorded in this browser — logins, updates, deletes, realtime events.</p>
           </div>
           <div class="table-wrap">
             <div class="table-toolbar">
-              <h3>Activity Log</h3>
+              <h3>Recent Activity</h3>
               <button class="btn-sm danger" onclick="clearLog()"><i class="fas fa-trash"></i> Clear Log</button>
             </div>
             <div style="padding: 0 20px 20px;">
@@ -717,233 +623,152 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
 
   <script>
   /* ============================================================
-     VERIDIAN EDGE ADMIN — Supabase backend
-     All quote submissions are stored in / read from Supabase.
-     Admin configures the connection via Settings (no code edits).
+     VERIDIAN EDGE ADMIN
+     Auth:     Supabase Auth (email + password)
+     Data:     Supabase (quotes table, RLS-protected)
+     Realtime: Supabase Realtime (postgres_changes)
   ============================================================ */
 
-  // ── Keys ─────────────────────────────────────────────────────
-  const ADMIN_KEY      = 've_admin_creds';
-  const SETTINGS_KEY   = 've_settings';
-  const LOG_KEY        = 've_seclog';
-  const LOCKOUT_KEY    = 've_lockout';
-  const SESSION_KEY    = 've_sess_token';
-  const SUPABASE_KEY   = 've_supabase_cfg';
-  const OFFLINE_KEY    = 've_offline_queue';
+  // ═══════════════════════════════════════════════════════════════
+  // ⚙  SUPABASE CONFIG — paste your values here (see SUPABASE_SETUP.md)
+  // ═══════════════════════════════════════════════════════════════
+  const SUPABASE_URL      = 'https://YOUR_PROJECT.supabase.co';
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
+  // ═══════════════════════════════════════════════════════════════
 
-  const DEFAULT_USER = 'admin';
-  const DEFAULT_PASS = 'Veridian@2025';
+  const CONFIGURED = SUPABASE_URL && SUPABASE_ANON_KEY
+                   && !SUPABASE_URL.includes('YOUR_PROJECT')
+                   && !SUPABASE_ANON_KEY.includes('YOUR_ANON_KEY');
 
-  // ── Supabase config (lazy-loaded) ────────────────────────────
-  function getSbCfg() {
-    try { return JSON.parse(localStorage.getItem(SUPABASE_KEY) || 'null'); } catch(_) { return null; }
-  }
-  function sbConfigured() {
-    const c = getSbCfg(); return !!(c && c.url && c.anon_key);
-  }
+  const SETTINGS_KEY = 've_settings';
+  const LOG_KEY      = 've_seclog';
+  const OFFLINE_KEY  = 've_offline_queue';
 
-  // ── Supabase REST helpers ────────────────────────────────────
-  async function sbFetch(path, options = {}) {
-    const cfg = getSbCfg();
-    if (!cfg) throw new Error('Supabase not configured.');
-    const url = cfg.url.replace(/\/$/, '') + path;
-    const res = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type':  'application/json',
-        'apikey':        cfg.anon_key,
-        'Authorization': 'Bearer ' + cfg.anon_key,
-        ...(options.headers || {}),
-      },
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => String(res.status));
-      throw new Error('Supabase ' + res.status + ': ' + text);
-    }
-    const ct = res.headers.get('content-type') || '';
-    if (ct.includes('application/json') && res.status !== 204) return res.json();
-    return null;
-  }
+  // Supabase client
+  const sb = CONFIGURED
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true }
+      })
+    : null;
 
-  // READ: calls the security-definer RPC function that bypasses RLS
-  async function sbGetQuotes() {
-    return sbFetch('/rest/v1/rpc/get_quotes', { method: 'POST', body: '{}' });
-  }
-
-  // UPDATE status
-  async function sbUpdateStatus(id, status) {
-    return sbFetch('/rest/v1/quotes?id=eq.' + encodeURIComponent(id), {
-      method:  'PATCH',
-      headers: { 'Prefer': 'return=minimal' },
-      body:    JSON.stringify({ status }),
-    });
-  }
-
-  // DELETE
-  async function sbDelete(id) {
-    return sbFetch('/rest/v1/quotes?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
-  }
-
-  // INSERT (used for offline queue flush)
-  async function sbInsert(row) {
-    const { id: _omit, ts: _omit2, ...payload } = row; // strip local fields
-    return sbFetch('/rest/v1/quotes', {
-      method:  'POST',
-      headers: { 'Prefer': 'return=minimal' },
-      body:    JSON.stringify(payload),
-    });
-  }
-
-  // ── Crypto ──────────────────────────────────────────────────
-  async function sha256(str) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-  }
-
-  // ── Credentials ─────────────────────────────────────────────
-  async function loadCreds() {
-    const stored = localStorage.getItem(ADMIN_KEY);
-    if (stored) return JSON.parse(stored);
-    const creds = { userhash: await sha256(DEFAULT_USER), passhash: await sha256(DEFAULT_PASS) };
-    localStorage.setItem(ADMIN_KEY, JSON.stringify(creds));
-    return creds;
-  }
-
-  // ── Lockout ─────────────────────────────────────────────────
-  function getLockout()    { const v = localStorage.getItem(LOCKOUT_KEY); return v ? JSON.parse(v) : { attempts:0, until:0 }; }
-  function setLockout(obj) { localStorage.setItem(LOCKOUT_KEY, JSON.stringify(obj)); }
-  function isLockedOut()   { return getLockout().until > Date.now(); }
-  function lockoutRemaining() { return Math.ceil((getLockout().until - Date.now()) / 1000); }
-
-  // ── Login ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // AUTH
+  // ═══════════════════════════════════════════════════════════════
   async function doLogin() {
-    if (isLockedOut()) { showLoginError(`Too many attempts. Try again in ${lockoutRemaining()}s.`); startLockoutTimer(); return; }
-    const user = document.getElementById('loginUser').value.trim();
-    const pass = document.getElementById('loginPass').value;
-    if (!user || !pass) { showLoginError('Please enter username and password.'); return; }
-    const creds = await loadCreds();
-    if (await sha256(user) === creds.userhash && await sha256(pass) === creds.passhash) {
-      setLockout({ attempts:0, until:0 });
-      sessionStorage.setItem(SESSION_KEY, btoa(pass));
-      addLog('ok', `Login successful — user: ${user}`);
-      enterDash();
-    } else {
-      const l = getLockout();
-      l.attempts = (l.attempts || 0) + 1;
-      if (l.attempts >= 5) {
-        l.until = Date.now() + 5 * 60 * 1000;
-        setLockout(l); addLog('fail', 'Lockout triggered');
-        showLoginError('Too many failed attempts. Locked for 5 minutes.'); startLockoutTimer();
-      } else {
-        setLockout(l); addLog('fail', `Failed login ${l.attempts}/5`);
-        showLoginError(`Invalid credentials. ${5 - l.attempts} attempt(s) remaining.`);
-      }
+    hideLoginError();
+    if (!CONFIGURED) {
+      document.getElementById('setupNotice').style.display = 'block';
+      showLoginError('Supabase is not configured yet.');
+      return;
     }
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass  = document.getElementById('loginPass').value;
+    if (!email || !pass) { showLoginError('Enter email and password.'); return; }
+
+    setLoginLoading(true);
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    setLoginLoading(false);
+
+    if (error) {
+      addLog('fail', 'Login failed: ' + error.message);
+      showLoginError(error.message || 'Invalid credentials.');
+      return;
+    }
+    addLog('ok', 'Login successful — ' + email);
+    enterDash(data.user);
   }
 
-  document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-  document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
-
-  function showLoginError(msg) {
-    document.getElementById('loginErrorMsg').textContent = msg;
-    document.getElementById('loginError').style.display  = 'flex';
-  }
-
-  let lockoutInterval = null;
-  function startLockoutTimer() {
-    const el = document.getElementById('lockoutTimer');
-    el.style.display = 'block';
-    if (lockoutInterval) clearInterval(lockoutInterval);
-    lockoutInterval = setInterval(() => {
-      if (!isLockedOut()) { el.style.display='none'; clearInterval(lockoutInterval); return; }
-      el.textContent = `Account locked. Try again in ${lockoutRemaining()}s.`;
-    }, 1000);
-  }
-
-  function doLogout() {
-    sessionStorage.removeItem(SESSION_KEY);
+  async function doLogout() {
+    try { await sb.auth.signOut(); } catch(_) {}
+    unsubscribeRealtime();
     document.body.classList.remove('authed');
     document.getElementById('loginPass').value = '';
     addLog('info', 'Admin signed out');
   }
 
-  function requireAuth() {
-    if (!sessionStorage.getItem(SESSION_KEY)) { doLogout(); return false; }
-    return true;
+  async function sendReset() {
+    if (!CONFIGURED) { toast('Supabase not configured.', 'err'); return; }
+    const email = document.getElementById('loginEmail').value.trim();
+    if (!email) { showLoginError('Enter your email first, then click Send reset email.'); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    if (error) { showLoginError(error.message); return; }
+    toast('Password reset email sent to ' + email, 'ok');
   }
 
-  function enterDash() {
-    const configured = sbConfigured();
-    document.getElementById('configBanner').style.display = configured ? 'none' : 'block';
-    document.getElementById('setupNotice').style.display  = configured ? 'none' : 'block';
+  function setLoginLoading(loading) {
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = loading;
+    btn.querySelector('span').textContent = loading ? 'Signing in…' : 'Sign In';
+  }
+
+  function showLoginError(msg) {
+    document.getElementById('loginErrorMsg').textContent = msg;
+    document.getElementById('loginError').style.display  = 'flex';
+  }
+  function hideLoginError() {
+    document.getElementById('loginError').style.display = 'none';
+  }
+
+  document.getElementById('loginPass').addEventListener('keydown',  e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('loginEmail').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+  function enterDash(user) {
+    document.getElementById('userChip').textContent = user.email || 'Signed in';
     document.body.classList.add('authed');
     loadSubmissions();
     loadSettings();
     loadLog();
     checkOfflineQueue();
-    toast('Welcome back, Admin.', 'ok');
+    subscribeRealtime();
+    toast('Welcome back, ' + (user.email || 'Admin') + '.', 'ok');
   }
 
-  // ── Navigation ───────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // NAVIGATION
+  // ═══════════════════════════════════════════════════════════════
   function showPage(name, btn) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
     if (btn) btn.classList.add('active');
-    if (name === 'submissions' || name === 'overview') loadSubmissions();
     if (name === 'settings') { loadSettings(); checkOfflineQueue(); }
     if (name === 'security') loadLog();
   }
 
-  // ── Submissions ──────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // SUBMISSIONS  (reads, updates, deletes)
+  // ═══════════════════════════════════════════════════════════════
   let allSubmissions = [];
   let activeId = null;
 
   async function loadSubmissions() {
-    if (!requireAuth()) return;
+    if (!sb) return;
+    ['submissionsTable','recentTable'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+    });
 
-    if (!sbConfigured()) {
-      allSubmissions = [];
-      renderTable([], 'submissionsTable');
-      renderTable([], 'recentTable');
-      updateStats();
-      setConnStatus('unknown', 'Not configured');
+    const { data, error } = await sb
+      .from('quotes')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      ['submissionsTable','recentTable'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>Couldn't load from Supabase.<br><small>${esc(error.message)}</small><br><br><button class="btn-sm" onclick="loadSubmissions()">Try again</button></p></div>`;
+      });
+      toast('Failed to load submissions: ' + error.message, 'err');
       return;
     }
 
-    ['submissionsTable','recentTable'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = '<div class="loading-state"><i class="fas fa-spinner fa-spin"></i> Loading from Supabase…</div>';
-    });
-
-    try {
-      const data = await sbGetQuotes();
-      allSubmissions = Array.isArray(data) ? data : [];
-      // Normalise field names — Supabase uses created_at, local queue uses ts
-      allSubmissions.forEach(s => { if (!s.timestamp) s.timestamp = s.created_at; });
-      renderTable(allSubmissions, 'submissionsTable');
-      renderTable(allSubmissions.slice(0, 5), 'recentTable');
-      updateStats();
-      updateNavBadge();
-      setConnStatus('ok', 'Connected — ' + allSubmissions.length + ' record(s)');
-    } catch (err) {
-      console.error('[VE Admin] Supabase load error:', err);
-      ['submissionsTable','recentTable'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = `<div class="empty-state"><i class="fas fa-triangle-exclamation"></i><p>Could not load from Supabase.<br><small>${esc(err.message)}</small><br><br><button class="btn-sm" onclick="loadSubmissions()">Try again</button></p></div>`;
-      });
-      setConnStatus('err', err.message.slice(0, 60));
-      toast('Failed to load submissions: ' + err.message, 'err');
-    }
-  }
-
-  function setConnStatus(state, label) {
-    ['connStatusBadge', 'sbConnStatus'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.className = 'conn-status ' + state;
-      el.querySelector('span').textContent = label;
-    });
+    allSubmissions = data || [];
+    renderTable(allSubmissions, 'submissionsTable');
+    renderTable(allSubmissions.slice(0, 5), 'recentTable');
+    updateStats();
+    updateNavBadge();
   }
 
   function updateNavBadge() {
@@ -954,35 +779,35 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
   }
 
   function updateStats() {
-    const now      = new Date();
-    const month    = now.getMonth(), year = now.getFullYear();
+    const now   = new Date();
+    const month = now.getMonth(), year = now.getFullYear();
     const thisMonth = allSubmissions.filter(s => {
-      const d = new Date(s.timestamp || s.created_at || s.ts);
+      const d = new Date(s.created_at);
       return d.getMonth() === month && d.getFullYear() === year;
     }).length;
-    document.getElementById('ov-total').textContent   = allSubmissions.length;
-    document.getElementById('ov-unread').textContent  = allSubmissions.filter(s => (s.status||'new') === 'new').length;
-    document.getElementById('ov-replied').textContent = allSubmissions.filter(s => s.status === 'replied').length;
-    document.getElementById('ov-month').textContent   = thisMonth;
+    document.getElementById('ov-total').textContent       = allSubmissions.length;
+    document.getElementById('ov-unread').textContent      = allSubmissions.filter(s => (s.status||'new') === 'new').length;
+    document.getElementById('ov-replied').textContent     = allSubmissions.filter(s => s.status === 'replied').length;
+    document.getElementById('ov-month').textContent       = thisMonth;
     document.getElementById('ov-month-label').textContent = now.toLocaleString('default', { month:'long' });
-    document.getElementById('subCount').textContent   = `All Submissions (${allSubmissions.length})`;
+    document.getElementById('subCount').textContent       = `All Submissions (${allSubmissions.length})`;
   }
 
-  function renderTable(data, targetId = 'submissionsTable') {
+  function renderTable(data, targetId = 'submissionsTable', freshIds = new Set()) {
     const el = document.getElementById(targetId);
     if (!el) return;
     if (!data || data.length === 0) {
-      el.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No submissions yet. They'll appear here once visitors submit the quote form.</p></div>`;
+      el.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No submissions yet. They'll appear here in real-time once visitors submit the quote form.</p></div>`;
       return;
     }
     const rows = data.map(s => `
-      <tr onclick="openModal('${esc(s.id)}')" style="cursor:pointer;">
+      <tr class="${freshIds.has(s.id) ? 'fresh' : ''}" onclick="openModal('${esc(s.id)}')" style="cursor:pointer;">
         <td class="td-name">${esc(s.name)}</td>
         <td>${esc(s.service)}</td>
         <td class="td-mono">${esc(s.phone)}</td>
         <td class="td-mono">${esc(s.location || '—')}</td>
         <td><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></td>
-        <td class="td-mono" style="white-space:nowrap;">${formatDate(s.created_at || s.timestamp || s.ts)}</td>
+        <td class="td-mono" style="white-space:nowrap;">${formatDate(s.created_at)}</td>
         <td onclick="event.stopPropagation()">
           <button class="btn-icon del" title="Delete" onclick="confirmDelete('${esc(s.id)}')"><i class="fas fa-trash-can"></i></button>
         </td>
@@ -1004,7 +829,90 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
     renderTable(filtered, 'submissionsTable');
   }
 
-  // ── Modal ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // REALTIME  — push updates, no refresh
+  // ═══════════════════════════════════════════════════════════════
+  let rtChannel = null;
+
+  function subscribeRealtime() {
+    if (!sb) return;
+    unsubscribeRealtime();
+    rtChannel = sb
+      .channel('quotes-live')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'quotes' },
+        (payload) => handleRealtimeEvent(payload))
+      .subscribe((status) => {
+        const badge = document.getElementById('liveBadge');
+        if (status === 'SUBSCRIBED') {
+          badge.classList.remove('off');
+          badge.textContent = 'Live';
+          addLog('info', 'Realtime connected');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          badge.classList.add('off');
+          badge.textContent = 'Offline';
+        }
+      });
+  }
+
+  function unsubscribeRealtime() {
+    if (rtChannel) { try { sb.removeChannel(rtChannel); } catch(_) {} rtChannel = null; }
+    const badge = document.getElementById('liveBadge');
+    if (badge) { badge.classList.add('off'); badge.textContent = 'Offline'; }
+  }
+
+  function handleRealtimeEvent(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload;
+
+    if (eventType === 'INSERT' && newRow) {
+      // New submission from a customer
+      if (!allSubmissions.find(s => s.id === newRow.id)) {
+        allSubmissions.unshift(newRow);
+        const fresh = new Set([newRow.id]);
+        renderTable(allSubmissions, 'submissionsTable', fresh);
+        renderTable(allSubmissions.slice(0, 5), 'recentTable', fresh);
+        updateStats();
+        updateNavBadge();
+        toast(`New quote request from ${newRow.name || 'someone'}`, 'ok');
+        playChime();
+        addLog('info', `New submission: ${newRow.name} — ${newRow.service}`);
+      }
+    } else if (eventType === 'UPDATE' && newRow) {
+      const idx = allSubmissions.findIndex(s => s.id === newRow.id);
+      if (idx >= 0) {
+        allSubmissions[idx] = newRow;
+        renderTable(allSubmissions, 'submissionsTable');
+        renderTable(allSubmissions.slice(0, 5), 'recentTable');
+        updateStats();
+        updateNavBadge();
+      }
+    } else if (eventType === 'DELETE' && oldRow) {
+      allSubmissions = allSubmissions.filter(s => s.id !== oldRow.id);
+      renderTable(allSubmissions, 'submissionsTable');
+      renderTable(allSubmissions.slice(0, 5), 'recentTable');
+      updateStats();
+      updateNavBadge();
+    }
+  }
+
+  // Little notification chime (no external file needed)
+  function playChime() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+      o.start(); o.stop(ctx.currentTime + 0.4);
+    } catch(_) {}
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // MODAL  (detail view + status/delete)
+  // ═══════════════════════════════════════════════════════════════
   function openModal(id) {
     const s = allSubmissions.find(x => x.id === id);
     if (!s) return;
@@ -1022,7 +930,7 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
       <div class="modal-field"><label>Message / Details</label><p style="white-space:pre-wrap;">${esc(s.message || 'No message.')}</p></div>
       <div class="modal-row">
         <div class="modal-field"><label>Status</label><p><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></p></div>
-        <div class="modal-field"><label>Received</label><p>${formatDate(s.created_at || s.timestamp || s.ts, true)}</p></div>
+        <div class="modal-field"><label>Received</label><p>${formatDate(s.created_at, true)}</p></div>
       </div>`;
     document.getElementById('modalOverlay').classList.add('open');
     if ((s.status || 'new') === 'new') markStatus('read', false);
@@ -1035,29 +943,32 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
   document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 
   async function markStatus(status, showToast = true) {
-    if (!activeId) return;
+    if (!activeId || !sb) return;
+    const { error } = await sb.from('quotes').update({ status }).eq('id', activeId);
+    if (error) { toast('Update failed: ' + error.message, 'err'); return; }
+
     const idx = allSubmissions.findIndex(s => s.id === activeId);
-    if (idx < 0) return;
-    allSubmissions[idx].status = status;
-    try {
-      await sbUpdateStatus(activeId, status);
-    } catch (err) { toast('Could not update status in Supabase: ' + err.message, 'err'); }
+    if (idx >= 0) allSubmissions[idx].status = status;
     renderTable(allSubmissions, 'submissionsTable');
     updateNavBadge(); updateStats();
-    if (showToast) { toast(`Marked as ${status}.`, 'ok'); closeModal(); }
+    if (showToast) {
+      toast(`Marked as ${status}.`, 'ok');
+      addLog('info', `Marked ${activeId.slice(0,8)}… as ${status}`);
+      closeModal();
+    }
   }
 
   async function deleteEntry() {
-    if (!activeId) return;
-    try {
-      await sbDelete(activeId);
-    } catch (err) { toast('Could not delete: ' + err.message, 'err'); return; }
+    if (!activeId || !sb) return;
+    const { error } = await sb.from('quotes').delete().eq('id', activeId);
+    if (error) { toast('Delete failed: ' + error.message, 'err'); return; }
+
     allSubmissions = allSubmissions.filter(s => s.id !== activeId);
     renderTable(allSubmissions, 'submissionsTable');
     updateNavBadge(); updateStats();
     toast('Submission deleted.', 'ok');
+    addLog('info', `Deleted submission ${activeId.slice(0,8)}…`);
     closeModal();
-    addLog('info', `Admin deleted submission ${activeId}`);
   }
 
   function confirmDelete(id) {
@@ -1065,7 +976,9 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
     if (confirm('Delete this submission from Supabase? This cannot be undone.')) deleteEntry();
   }
 
-  // ── CSV Export ───────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // CSV EXPORT
+  // ═══════════════════════════════════════════════════════════════
   function exportCSV() {
     if (!allSubmissions.length) { toast('No submissions to export.', 'err'); return; }
     const cols = ['name','phone','email','service','location','message','status','created_at'];
@@ -1077,11 +990,13 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
       download: `veridian_quotes_${new Date().toISOString().slice(0,10)}.csv`
     });
     a.click();
-    addLog('info', 'Admin exported CSV');
+    addLog('info', 'Exported CSV');
     toast('CSV exported.', 'ok');
   }
 
-  // ── Settings ─────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // SETTINGS (WhatsApp / email / stats — stored locally)
+  // ═══════════════════════════════════════════════════════════════
   const DEFAULT_SETTINGS = {
     wa: '971552951578', wa_display: '+971-55-2951578',
     email: 'info@veridianedgellc.com',
@@ -1089,134 +1004,23 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
   };
 
   function loadSettings() {
-    const s   = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null') || DEFAULT_SETTINGS;
-    const cfg = getSbCfg() || {};
-    document.getElementById('sb-url').value              = cfg.url || '';
-    document.getElementById('sb-anon').value             = cfg.anon_key || '';
-    document.getElementById('set-wa').value              = s.wa || '';
-    document.getElementById('set-wa-display').value      = s.wa_display || '';
-    document.getElementById('set-email').value           = s.email || '';
-    document.getElementById('stat-projects').value       = s.stat_projects || '';
-    document.getElementById('stat-years').value          = s.stat_years || '';
-    document.getElementById('stat-satisfaction').value   = s.stat_satisfaction || '';
-    document.getElementById('stat-rating').value         = s.stat_rating || '';
-    // Update connection status badge in settings
-    if (sbConfigured()) {
-      setConnStatus('ok', 'Configured');
-    } else {
-      setConnStatus('unknown', 'Not configured');
-    }
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null') || DEFAULT_SETTINGS;
+    document.getElementById('set-wa').value            = s.wa || '';
+    document.getElementById('set-wa-display').value    = s.wa_display || '';
+    document.getElementById('set-email').value         = s.email || '';
+    document.getElementById('stat-projects').value     = s.stat_projects || '';
+    document.getElementById('stat-years').value        = s.stat_years || '';
+    document.getElementById('stat-satisfaction').value = s.stat_satisfaction || '';
+    document.getElementById('stat-rating').value       = s.stat_rating || '';
   }
 
-  // ── Save Supabase config ──────────────────────────────────────
-  function saveSupabaseConfig() {
-    if (!requireAuth()) return;
-    const url     = document.getElementById('sb-url').value.trim();
-    const anonKey = document.getElementById('sb-anon').value.trim();
-    const errEl   = document.getElementById('sc-supabase-err');
-    const okEl    = document.getElementById('sc-supabase');
-    errEl.classList.remove('show'); okEl.classList.remove('show');
-
-    if (!url || !url.startsWith('https://')) {
-      document.getElementById('sb-err-msg').textContent = 'Enter a valid Supabase Project URL (starts with https://).';
-      errEl.classList.add('show'); return;
-    }
-    if (!anonKey || anonKey.length < 20) {
-      document.getElementById('sb-err-msg').textContent = 'Enter a valid anon key.';
-      errEl.classList.add('show'); return;
-    }
-    localStorage.setItem(SUPABASE_KEY, JSON.stringify({ url, anon_key: anonKey }));
-    document.getElementById('configBanner').style.display = 'none';
-    document.getElementById('setupNotice').style.display  = 'none';
-    okEl.classList.add('show');
-    setTimeout(() => okEl.classList.remove('show'), 4000);
-    toast('Supabase config saved — loading submissions…', 'ok');
-    addLog('info', 'Supabase config updated');
-    loadSubmissions();
-  }
-
-  // ── Test Supabase connection ──────────────────────────────────
-  async function testSupabaseConnection() {
-    if (!requireAuth()) return;
-    const url     = document.getElementById('sb-url').value.trim();
-    const anonKey = document.getElementById('sb-anon').value.trim();
-    if (!url || !anonKey) { toast('Enter URL and anon key first.', 'err'); return; }
-
-    // Temporarily apply for test
-    const prev = localStorage.getItem(SUPABASE_KEY);
-    localStorage.setItem(SUPABASE_KEY, JSON.stringify({ url, anon_key: anonKey }));
-    setConnStatus('unknown', 'Testing…');
-    toast('Testing connection…', 'info');
-
-    try {
-      const data = await sbGetQuotes();
-      const count = Array.isArray(data) ? data.length : '?';
-      setConnStatus('ok', 'Connected — ' + count + ' record(s)');
-      toast('✓ Connection successful — ' + count + ' quote(s) found.', 'ok');
-    } catch (err) {
-      setConnStatus('err', err.message.slice(0, 50));
-      toast('Connection failed: ' + err.message, 'err');
-      // Restore previous config on failure
-      if (prev) localStorage.setItem(SUPABASE_KEY, prev);
-      else localStorage.removeItem(SUPABASE_KEY);
-    }
-  }
-
-  // ── Copy SQL ─────────────────────────────────────────────────
-  function copySql() {
-    const sql = document.getElementById('sqlSnippet').textContent;
-    navigator.clipboard.writeText(sql).then(() => toast('SQL copied to clipboard.', 'ok'));
-  }
-
-  // ── Offline queue ─────────────────────────────────────────────
-  function checkOfflineQueue() {
-    const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
-    const card  = document.getElementById('offlineQueueCard');
-    if (!queue.length) { card.style.display = 'none'; return; }
-    card.style.display = 'block';
-    const list = document.getElementById('queueList');
-    list.innerHTML = `<div style="margin-bottom:10px;"><span class="queue-badge"><i class="fas fa-clock"></i> ${queue.length} pending submission(s)</span></div>` +
-      queue.map(s => `<div style="font-size:0.82rem;color:var(--text2);padding:4px 0;">${esc(s.name || '—')} · ${esc(s.service || '—')} · ${formatDate(s.ts, true)}</div>`).join('');
-  }
-
-  async function flushQueue() {
-    if (!sbConfigured()) { toast('Configure Supabase first.', 'err'); return; }
-    const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
-    if (!queue.length) { toast('Queue is empty.', 'info'); return; }
-    let ok = 0, fail = 0;
-    for (const row of queue) {
-      try { await sbInsert(row); ok++; }
-      catch (_) { fail++; }
-    }
-    if (fail === 0) {
-      localStorage.removeItem(OFFLINE_KEY);
-      showConfirm('queue');
-      toast(`Flushed ${ok} submission(s) to Supabase.`, 'ok');
-      addLog('info', `Flushed ${ok} offline submission(s) to Supabase`);
-    } else {
-      toast(`Partial flush: ${ok} OK, ${fail} failed.`, 'err');
-    }
-    checkOfflineQueue();
-    loadSubmissions();
-  }
-
-  function clearQueue() {
-    if (!confirm('Discard all offline queued submissions? This cannot be undone.')) return;
-    localStorage.removeItem(OFFLINE_KEY);
-    checkOfflineQueue();
-    toast('Offline queue cleared.', 'ok');
-  }
-
-  // ── Misc settings ─────────────────────────────────────────────
   function saveSetting(type) {
-    if (!requireAuth()) return;
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null') || { ...DEFAULT_SETTINGS };
     if (type === 'whatsapp') {
-      s.wa = document.getElementById('set-wa').value.replace(/\D/g,'');
+      s.wa         = document.getElementById('set-wa').value.replace(/\D/g,'');
       s.wa_display = document.getElementById('set-wa-display').value.trim();
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
-      document.getElementById('wa-snippet').value =
-        `href="https://wa.me/${s.wa}"\n<span>${s.wa_display}</span>`;
+      document.getElementById('wa-snippet').value = `href="https://wa.me/${s.wa}"\n<span>${s.wa_display}</span>`;
       document.getElementById('sc-whatsapp-code').style.display = 'block';
       showConfirm('whatsapp');
     }
@@ -1254,29 +1058,78 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
     setTimeout(() => el.classList.remove('show'), 4000);
   }
 
-  // ── Change Password ──────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // CHANGE PASSWORD  (Supabase Auth)
+  // ═══════════════════════════════════════════════════════════════
   async function changePassword() {
-    if (!requireAuth()) return;
-    const cur   = document.getElementById('pw-current').value;
+    if (!sb) return;
     const newPw = document.getElementById('pw-new').value;
     const conf  = document.getElementById('pw-confirm').value;
     const errEl = document.getElementById('sc-password-err');
     const okEl  = document.getElementById('sc-password');
     errEl.classList.remove('show'); okEl.classList.remove('show');
-    if (newPw.length < 8) { document.getElementById('pw-err-msg').textContent = 'New password must be at least 8 characters.'; errEl.classList.add('show'); return; }
-    if (newPw !== conf)   { document.getElementById('pw-err-msg').textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
-    const creds = await loadCreds();
-    if (await sha256(cur) !== creds.passhash) { document.getElementById('pw-err-msg').textContent = 'Current password is incorrect.'; errEl.classList.add('show'); return; }
-    creds.passhash = await sha256(newPw);
-    localStorage.setItem(ADMIN_KEY, JSON.stringify(creds));
-    ['pw-current','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
+
+    if (newPw.length < 8)  { document.getElementById('pw-err-msg').textContent = 'New password must be at least 8 characters.'; errEl.classList.add('show'); return; }
+    if (newPw !== conf)    { document.getElementById('pw-err-msg').textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+
+    const { error } = await sb.auth.updateUser({ password: newPw });
+    if (error) {
+      document.getElementById('pw-err-msg').textContent = error.message;
+      errEl.classList.add('show');
+      return;
+    }
+    ['pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
     okEl.classList.add('show');
+    setTimeout(() => okEl.classList.remove('show'), 4000);
     addLog('ok', 'Admin password changed');
     toast('Password updated.', 'ok');
-    setTimeout(() => okEl.classList.remove('show'), 4000);
   }
 
-  // ── Security Log ─────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // OFFLINE QUEUE  (flush customer submissions saved during outage)
+  // ═══════════════════════════════════════════════════════════════
+  function checkOfflineQueue() {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+    const card  = document.getElementById('offlineQueueCard');
+    if (!queue.length) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    const list = document.getElementById('queueList');
+    list.innerHTML = `<div style="margin-bottom:10px;"><span class="queue-badge"><i class="fas fa-clock"></i> ${queue.length} pending submission(s)</span></div>` +
+      queue.map(s => `<div style="font-size:0.82rem;color:var(--text2);padding:4px 0;">${esc(s.name || '—')} · ${esc(s.service || '—')} · ${formatDate(s.ts, true)}</div>`).join('');
+  }
+
+  async function flushQueue() {
+    if (!sb) { toast('Not connected.', 'err'); return; }
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
+    if (!queue.length) { toast('Queue is empty.', 'info'); return; }
+    let ok = 0, fail = 0;
+    for (const row of queue) {
+      const { id: _omit, ts: _omit2, ...payload } = row;
+      const { error } = await sb.from('quotes').insert(payload);
+      if (error) fail++; else ok++;
+    }
+    if (fail === 0) {
+      localStorage.removeItem(OFFLINE_KEY);
+      showConfirm('queue');
+      toast(`Flushed ${ok} submission(s) to Supabase.`, 'ok');
+      addLog('info', `Flushed ${ok} offline submission(s)`);
+    } else {
+      toast(`Partial flush: ${ok} OK, ${fail} failed.`, 'err');
+    }
+    checkOfflineQueue();
+    loadSubmissions();
+  }
+
+  function clearQueue() {
+    if (!confirm('Discard all offline queued submissions? This cannot be undone.')) return;
+    localStorage.removeItem(OFFLINE_KEY);
+    checkOfflineQueue();
+    toast('Offline queue cleared.', 'ok');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // ACTIVITY LOG  (local-only, for auditing in this browser)
+  // ═══════════════════════════════════════════════════════════════
   function addLog(type, msg) {
     let log = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
     log.push({ type, msg, ts: Date.now() });
@@ -1298,7 +1151,9 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
   }
   function clearLog() { localStorage.removeItem(LOG_KEY); loadLog(); toast('Log cleared.', 'ok'); }
 
-  // ── Toast ────────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════
+  // TOAST + UTIL
+  // ═══════════════════════════════════════════════════════════════
   function toast(msg, type = 'info') {
     const el = Object.assign(document.createElement('div'), { className: `toast ${type}` });
     el.innerHTML = `<i class="fas fa-${type==='ok'?'circle-check':type==='err'?'circle-exclamation':'circle-info'}"></i> ${esc(msg)}`;
@@ -1306,7 +1161,6 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
     setTimeout(() => el.remove(), 4500);
   }
 
-  // ── Utils ────────────────────────────────────────────────────
   function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function formatDate(val, full = false) {
     if (!val) return '—';
@@ -1317,10 +1171,27 @@ GRANT EXECUTE ON FUNCTION public.get_quotes() TO anon;</div>
       : d.toLocaleDateString('en-AE', { day:'2-digit', month:'short', year:'numeric' });
   }
 
-  // ── Init ─────────────────────────────────────────────────────
-  loadCreds();
-  const _sess = sessionStorage.getItem(SESSION_KEY);
-  if (_sess) { enterDash(); }
+  // ═══════════════════════════════════════════════════════════════
+  // INIT — restore session if it exists, otherwise show login
+  // ═══════════════════════════════════════════════════════════════
+  (async function init() {
+    if (!CONFIGURED) {
+      document.getElementById('setupNotice').style.display = 'block';
+      return;
+    }
+    const { data } = await sb.auth.getSession();
+    if (data.session && data.session.user) {
+      enterDash(data.session.user);
+    }
+
+    // If Supabase signs the user out (token revoked, expired, etc.), bounce to login
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        unsubscribeRealtime();
+        document.body.classList.remove('authed');
+      }
+    });
+  })();
   </script>
 </body>
 </html>
