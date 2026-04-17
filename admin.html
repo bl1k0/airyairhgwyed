@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Veridian Edge</title>
+  <!-- NO index, NO follow — keep this page invisible to search engines -->
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    /* ============================================================
+       VERIDIAN EDGE — ADMIN PANEL STYLES
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0c10;
+      --bg2:       #111520;
+      --bg3:       #181d2a;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.12);
+      --accent:    #4f8ef7;
+      --accent2:   #2dd4bf;
+      --danger:    #f04040;
+      --success:   #22c55e;
+      --warn:      #f59e0b;
+      --text:      #e2e8f0;
+      --text2:     #94a3b8;
+      --text3:     #475569;
+      --radius:    10px;
+      --shadow:    0 4px 24px rgba(0,0,0,0.5);
+    }
+
+    html { font-size: 15px; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ===== LOGIN SCREEN ===== */
+    #loginScreen {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+      animation: fadeIn .4s ease;
+    }
+    .login-card {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 48px 40px 40px;
+      box-shadow: var(--shadow), 0 0 60px rgba(79,142,247,0.06);
+    }
+    .login-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .login-logo .logo-mark {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      width: 42px; height: 42px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff; letter-spacing: -1px;
+    }
+    .login-logo .logo-text { font-size: 13px; line-height: 1.35; color: var(--text2); }
+    .login-logo .logo-name { font-weight: 700; color: var(--text); font-size: 14px; display: block; }
+    .login-card h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px; }
+    .login-card p { color: var(--text2); font-size: 0.875rem; margin-bottom: 28px; }
+    .field-group { margin-bottom: 18px; }
+    .field-group label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+    .field-group input {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .field-group input:focus { border-color: var(--accent); }
+    .field-group input[type="password"] { font-family: 'DM Mono', monospace; letter-spacing: .1em; }
+    .btn-login {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), #3570d4);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 13px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s;
+      margin-top: 8px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-login:hover { opacity: .9; transform: translateY(-1px); }
+    .login-error {
+      background: rgba(240,64,64,0.1);
+      border: 1px solid rgba(240,64,64,0.3);
+      color: var(--danger);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      margin-top: 14px;
+      display: none;
+      align-items: center; gap: 8px;
+    }
+    .lockout-timer { font-size: 0.8rem; color: var(--warn); margin-top: 10px; text-align: center; display: none; }
+
+    /* ===== ADMIN DASHBOARD ===== */
+    #adminDash {
+      display: none;
+      width: 100%;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+    body.authed { align-items: stretch; justify-content: flex-start; }
+    body.authed #loginScreen { display: none; }
+    body.authed #adminDash { display: flex; }
+
+    /* Top bar */
+    .topbar {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 12px; }
+    .topbar-brand .logo-mark {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: #fff; letter-spacing: -1px;
+    }
+    .topbar-brand span { font-weight: 700; font-size: 0.95rem; }
+    .topbar-brand small { color: var(--text2); font-size: 0.75rem; display: block; }
+    .topbar-right { display: flex; align-items: center; gap: 16px; }
+    .badge-live {
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--success);
+      font-size: 0.72rem; font-weight: 600;
+      padding: 4px 10px; border-radius: 99px;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .badge-live::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--success); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .btn-logout {
+      background: rgba(240,64,64,0.1);
+      border: 1px solid rgba(240,64,64,0.2);
+      color: var(--danger);
+      padding: 7px 14px; border-radius: 8px;
+      font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      transition: background .2s;
+    }
+    .btn-logout:hover { background: rgba(240,64,64,0.18); }
+
+    /* Layout */
+    .dash-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      flex: 1;
+    }
+    /* Sidebar */
+    .sidebar {
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      position: sticky; top: 65px;
+      height: calc(100vh - 65px);
+      overflow-y: auto;
+    }
+    .sidebar-section { padding: 0 16px; margin-bottom: 6px; }
+    .sidebar-label { font-size: 0.68rem; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; padding: 0 12px; margin-bottom: 6px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 12px; border-radius: 8px;
+      cursor: pointer; color: var(--text2);
+      font-size: 0.875rem; font-weight: 500;
+      transition: all .15s; border: none; background: transparent;
+      font-family: inherit; width: 100%; text-align: left;
+    }
+    .nav-item i { width: 16px; text-align: center; }
+    .nav-item:hover { background: var(--bg3); color: var(--text); }
+    .nav-item.active { background: rgba(79,142,247,0.12); color: var(--accent); }
+    .nav-badge { margin-left: auto; background: var(--accent); color:#fff; font-size:0.65rem; font-weight:700; padding:2px 7px; border-radius:99px; }
+
+    /* Main content */
+    .main-content { padding: 28px; overflow-y: auto; }
+    .page { display: none; animation: fadeIn .3s ease; }
+    .page.active { display: block; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+    /* Page header */
+    .page-header { margin-bottom: 24px; }
+    .page-header h1 { font-size: 1.4rem; font-weight: 700; }
+    .page-header p { color: var(--text2); font-size: 0.875rem; margin-top: 4px; }
+
+    /* Stats row */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .stat-card .sc-label { color: var(--text2); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .stat-card .sc-value { font-size: 1.8rem; font-weight: 700; margin: 6px 0 2px; }
+    .stat-card .sc-sub { font-size: 0.78rem; color: var(--text2); }
+    .stat-card.accent { border-color: rgba(79,142,247,0.25); }
+    .stat-card.success { border-color: rgba(34,197,94,0.2); }
+    .stat-card.warn { border-color: rgba(245,158,11,0.2); }
+
+    /* Table */
+    .table-wrap {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .table-toolbar {
+      padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      gap: 12px; flex-wrap: wrap;
+    }
+    .table-toolbar h3 { font-size: 0.95rem; font-weight: 700; }
+    .toolbar-right { display: flex; align-items: center; gap: 10px; }
+    .search-box {
+      background: var(--bg3); border: 1px solid var(--border2); border-radius: 8px;
+      padding: 7px 12px; color: var(--text); font-family: inherit; font-size: 0.85rem;
+      outline: none; transition: border-color .2s; width: 200px;
+    }
+    .search-box:focus { border-color: var(--accent); }
+    .btn-sm {
+      padding: 7px 14px; border-radius: 8px; font-family: inherit;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border2);
+      background: var(--bg3); color: var(--text); transition: all .15s; display: flex; align-items: center; gap: 6px;
+    }
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.danger { border-color: rgba(240,64,64,0.3); color: var(--danger); }
+    .btn-sm.danger:hover { background: rgba(240,64,64,0.1); }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: var(--bg3); color: var(--text2);
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing:.06em;
+      padding: 11px 16px; text-align: left; border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.025); }
+    td { padding: 13px 16px; font-size: 0.85rem; vertical-align: top; }
+    td.td-mono { font-family: 'DM Mono', monospace; font-size: 0.8rem; color: var(--text2); }
+    .td-name { font-weight: 600; }
+    .tag {
+      display: inline-block; padding: 3px 10px; border-radius: 99px;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    }
+    .tag-new { background: rgba(79,142,247,0.12); color: var(--accent); border: 1px solid rgba(79,142,247,0.25); }
+    .tag-read { background: rgba(148,163,184,0.08); color: var(--text2); border: 1px solid var(--border); }
+    .tag-replied { background: rgba(34,197,94,0.1); color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+    .btn-icon {
+      background: none; border: none; color: var(--text2); cursor: pointer;
+      padding: 5px 8px; border-radius: 6px; transition: all .15s;
+    }
+    .btn-icon:hover { background: var(--bg3); color: var(--text); }
+    .btn-icon.del:hover { color: var(--danger); }
+    .empty-state {
+      padding: 60px 20px; text-align: center; color: var(--text2);
+    }
+    .empty-state i { font-size: 2.5rem; opacity: .3; margin-bottom: 14px; display: block; }
+    .empty-state p { font-size: 0.875rem; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;
+      display: none; align-items: center; justify-content: center; padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.open { display: flex; animation: fadeIn .2s ease; }
+    .modal {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 14px; padding: 28px 32px; max-width: 560px; width: 100%;
+      box-shadow: var(--shadow); max-height: 85vh; overflow-y: auto;
+    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .modal-header h3 { font-size: 1.05rem; font-weight: 700; }
+    .modal-close { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 1.1rem; padding: 4px; }
+    .modal-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .modal-field { margin-bottom: 16px; }
+    .modal-field label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .modal-field p { font-size: 0.875rem; color: var(--text); line-height: 1.5; word-break: break-word; }
+    .modal-field .tag { margin-right: 4px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+    .btn-action {
+      flex: 1; padding: 10px; border-radius: 8px; font-family: inherit; font-size: 0.875rem;
+      font-weight: 600; cursor: pointer; border: 1px solid var(--border2); transition: all .15s;
+    }
+    .btn-action.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .btn-action.primary:hover { opacity: .9; }
+    .btn-action.secondary { background: var(--bg3); color: var(--text); }
+    .btn-action.secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-action.del { background: rgba(240,64,64,0.08); color: var(--danger); border-color: rgba(240,64,64,0.2); }
+    .btn-action.del:hover { background: rgba(240,64,64,0.15); }
+
+    /* Settings */
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .settings-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; margin-bottom: 0;
+    }
+    .settings-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    .settings-card h3 i { color: var(--accent); }
+    .settings-card p { color: var(--text2); font-size: 0.8rem; margin-bottom: 20px; }
+    .s-field { margin-bottom: 14px; }
+    .s-field label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+    .s-field input, .s-field select {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 10px 14px; color: var(--text);
+      font-family: inherit; font-size: 0.875rem; outline: none; transition: border-color .2s;
+    }
+    .s-field input:focus, .s-field select:focus { border-color: var(--accent); }
+    .btn-save {
+      padding: 10px 20px; background: var(--accent); color: #fff; border: none;
+      border-radius: 8px; font-family: inherit; font-size: 0.875rem; font-weight: 600;
+      cursor: pointer; transition: opacity .2s; display: flex; align-items: center; gap: 8px;
+      margin-top: 4px;
+    }
+    .btn-save:hover { opacity: .88; }
+    .save-confirm {
+      display: none; align-items: center; gap: 6px;
+      color: var(--success); font-size: 0.8rem; margin-top: 10px;
+    }
+    .save-confirm.show { display: flex; animation: fadeIn .2s ease; }
+
+    /* Change password card — full width */
+    .settings-card.full { grid-column: 1 / -1; }
+
+    /* Stats editor */
+    .stats-edit-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+    /* Security log */
+    .log-list { list-style: none; }
+    .log-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 0; border-bottom: 1px solid var(--border);
+      font-size: 0.82rem;
+    }
+    .log-item:last-child { border-bottom: none; }
+    .log-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; }
+    .log-icon.ok { background: rgba(34,197,94,0.1); color: var(--success); }
+    .log-icon.fail { background: rgba(240,64,64,0.1); color: var(--danger); }
+    .log-icon.info { background: rgba(79,142,247,0.1); color: var(--accent); }
+    .log-time { color: var(--text3); font-family: 'DM Mono', monospace; font-size: 0.74rem; margin-left: auto; white-space: nowrap; }
+
+    /* Toast */
+    #toastContainer {
+      position: fixed; bottom: 24px; right: 24px; z-index: 500;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .toast {
+      background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 13px 18px;
+      display: flex; align-items: center; gap: 10px;
+      box-shadow: var(--shadow); font-size: 0.85rem;
+      animation: slideIn .3s ease; min-width: 260px;
+    }
+    .toast.ok { border-left: 3px solid var(--success); }
+    .toast.err { border-left: 3px solid var(--danger); }
+    .toast.info { border-left: 3px solid var(--accent); }
+    @keyframes slideIn { from { transform: translateX(100%); opacity:0; } to { transform:none; opacity:1; } }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .dash-layout { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; display: flex; flex-wrap: wrap; gap: 4px; padding: 12px; }
+      .sidebar-label { display: none; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .settings-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 580px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .modal { padding: 20px; }
+      .modal-row { grid-template-columns: 1fr; }
+      .main-content { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div id="loginScreen">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-mark">VE</div>
+        <div class="logo-text">
+          <span class="logo-name">VERIDIAN EDGE</span>
+          <span>Admin Portal</span>
+        </div>
+      </div>
+      <h2>Sign In</h2>
+      <p>Restricted access. Authorised personnel only.</p>
+      <div class="field-group">
+        <label>Username</label>
+        <input type="text" id="loginUser" autocomplete="off" placeholder="Enter username" />
+      </div>
+      <div class="field-group">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="••••••••" />
+      </div>
+      <button class="btn-login" onclick="doLogin()">
+        <i class="fas fa-lock-open"></i> Sign In
+      </button>
+      <div class="login-error" id="loginError">
+        <i class="fas fa-circle-exclamation"></i>
+        <span id="loginErrorMsg">Invalid credentials.</span>
+      </div>
+      <div class="lockout-timer" id="lockoutTimer"></div>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN DASHBOARD ===== -->
+  <div id="adminDash">
+    <div class="topbar">
+      <div class="topbar-brand">
+        <div class="logo-mark">VE</div>
+        <div>
+          <span>Veridian Edge Admin</span>
+          <small>Technical Services LLC — Dashboard</small>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="badge-live">Live</span>
+        <button class="btn-logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+      </div>
+    </div>
+
+    <div class="dash-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-label">Menu</div>
+          <button class="nav-item active" onclick="showPage('overview', this)">
+            <i class="fas fa-chart-bar"></i> Overview
+          </button>
+          <button class="nav-item" onclick="showPage('submissions', this)">
+            <i class="fas fa-inbox"></i> Quote Requests
+            <span class="nav-badge" id="navBadge">0</span>
+          </button>
+        </div>
+        <div class="sidebar-section" style="margin-top:12px">
+          <div class="sidebar-label">Configuration</div>
+          <button class="nav-item" onclick="showPage('settings', this)">
+            <i class="fas fa-sliders"></i> Site Settings
+          </button>
+          <button class="nav-item" onclick="showPage('security', this)">
+            <i class="fas fa-shield-halved"></i> Security Log
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="main-content">
+
+        <!-- OVERVIEW -->
+        <div class="page active" id="page-overview">
+          <div class="page-header">
+            <h1>Overview</h1>
+            <p>Live snapshot of quote submissions and site activity.</p>
+          </div>
+          <div class="stats-row">
+            <div class="stat-card accent">
+              <div class="sc-label">Total Requests</div>
+              <div class="sc-value" id="ov-total">0</div>
+              <div class="sc-sub">All time</div>
+            </div>
+            <div class="stat-card">
+              <div class="sc-label">Unread</div>
+              <div class="sc-value" id="ov-unread">0</div>
+              <div class="sc-sub">Needs attention</div>
+            </div>
+            <div class="stat-card success">
+              <div class="sc-label">Replied</div>
+              <div class="sc-value" id="ov-replied">0</div>
+              <div class="sc-sub">Follow-up done</div>
+            </div>
+            <div class="stat-card warn">
+              <div class="sc-label">This Month</div>
+              <div class="sc-value" id="ov-month">0</div>
+              <div class="sc-sub" id="ov-month-label">—</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <div class="table-toolbar">
+              <h3>Recent Submissions</h3>
+              <button class="btn-sm" onclick="showPage('submissions', document.querySelector('.nav-item:nth-child(2)'))">View All →</button>
+            </div>
+            <div id="recentTable"></div>
+          </div>
+        </div>
+
+        <!-- SUBMISSIONS -->
+        <div class="page" id="page-submissions">
+          <div class="page-header">
+            <h1>Quote Requests</h1>
+            <p>All form submissions — stored encrypted in your browser's local storage.</p>
+          </div>
+          <div class="table-wrap">
+            <div class="table-toolbar">
+              <h3 id="subCount">All Submissions</h3>
+              <div class="toolbar-right">
+                <input class="search-box" id="searchBox" placeholder="Search by name, service…" oninput="filterTable()" />
+                <button class="btn-sm danger" onclick="clearAllSubmissions()"><i class="fas fa-trash"></i> Clear All</button>
+                <button class="btn-sm" onclick="exportCSV()"><i class="fas fa-download"></i> Export CSV</button>
+              </div>
+            </div>
+            <div id="submissionsTable"></div>
+          </div>
+        </div>
+
+        <!-- SETTINGS -->
+        <div class="page" id="page-settings">
+          <div class="page-header">
+            <h1>Site Settings</h1>
+            <p>Update contact details and stats that appear on the website. Changes save locally and you can copy the values to update your HTML.</p>
+          </div>
+          <div class="settings-grid">
+
+            <!-- WhatsApp -->
+            <div class="settings-card">
+              <h3><i class="fab fa-whatsapp"></i> WhatsApp Number</h3>
+              <p>The number used in chat links and the floating button.</p>
+              <div class="s-field">
+                <label>Country Code + Number (no spaces/dashes)</label>
+                <input type="tel" id="set-wa" placeholder="971552951578" />
+              </div>
+              <div class="s-field">
+                <label>Display Format (shown to visitors)</label>
+                <input type="text" id="set-wa-display" placeholder="+971-55-2951578" />
+              </div>
+              <button class="btn-save" onclick="saveSetting('whatsapp')"><i class="fas fa-save"></i> Save</button>
+              <div class="save-confirm" id="sc-whatsapp"><i class="fas fa-circle-check"></i> Saved! Update your index.html with the value below.</div>
+              <div id="sc-whatsapp-code" style="margin-top:10px;display:none;">
+                <div class="s-field"><label>HTML snippet to replace in index.html</label>
+                <textarea readonly style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px;color:var(--text2);font-family:'DM Mono',monospace;font-size:0.75rem;resize:vertical;" id="wa-snippet" rows="3"></textarea></div>
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="settings-card">
+              <h3><i class="fas fa-envelope"></i> Contact Email</h3>
+              <p>The email address displayed in contact cards and footer.</p>
+              <div class="s-field">
+                <label>Email Address</label>
+                <input type="email" id="set-email" placeholder="info@veridianedgellc.com" />
+              </div>
+              <button class="btn-save" onclick="saveSetting('email')"><i class="fas fa-save"></i> Save</button>
+              <div class="save-confirm" id="sc-email"><i class="fas fa-circle-check"></i> Saved! Replace in index.html.</div>
+              <div id="sc-email-code" style="margin-top:10px;display:none;">
+                <div class="s-field"><label>Replace all instances of this in your index.html</label>
+                <input readonly style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px;color:var(--text2);font-family:'DM Mono',monospace;font-size:0.75rem;" id="email-snippet" /></div>
+              </div>
+            </div>
+
+            <!-- Hero Stats -->
+            <div class="settings-card full">
+              <h3><i class="fas fa-chart-line"></i> Website Stats (Hero Section)</h3>
+              <p>These are the four stats shown in the hero. Update them here and apply the generated snippet to your index.html.</p>
+              <div class="stats-edit-grid">
+                <div class="s-field">
+                  <label>Projects Completed</label>
+                  <input type="text" id="stat-projects" placeholder="100+" />
+                </div>
+                <div class="s-field">
+                  <label>Years in UAE</label>
+                  <input type="text" id="stat-years" placeholder="2+" />
+                </div>
+                <div class="s-field">
+                  <label>Client Satisfaction %</label>
+                  <input type="text" id="stat-satisfaction" placeholder="98%" />
+                </div>
+                <div class="s-field">
+                  <label>Average Rating</label>
+                  <input type="text" id="stat-rating" placeholder="5★" />
+                </div>
+              </div>
+              <button class="btn-save" onclick="saveSetting('stats')"><i class="fas fa-save"></i> Save Stats</button>
+              <div class="save-confirm" id="sc-stats"><i class="fas fa-circle-check"></i> Saved! Use the snippet below.</div>
+              <div id="sc-stats-code" style="margin-top:12px;display:none;">
+                <div class="s-field"><label>Replace .hero-stats in your index.html with:</label>
+                <textarea readonly style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px;color:var(--text2);font-family:'DM Mono',monospace;font-size:0.72rem;resize:vertical;" id="stats-snippet" rows="12"></textarea></div>
+              </div>
+            </div>
+
+            <!-- Change Password -->
+            <div class="settings-card full">
+              <h3><i class="fas fa-key"></i> Change Password</h3>
+              <p>Update your admin password. Must be at least 8 characters. The new hash is stored locally.</p>
+              <div class="modal-row">
+                <div class="s-field">
+                  <label>Current Password</label>
+                  <input type="password" id="pw-current" placeholder="••••••••" />
+                </div>
+                <div class="s-field">
+                  <label>New Password</label>
+                  <input type="password" id="pw-new" placeholder="••••••••" />
+                </div>
+                <div class="s-field">
+                  <label>Confirm New Password</label>
+                  <input type="password" id="pw-confirm" placeholder="••••••••" />
+                </div>
+              </div>
+              <button class="btn-save" onclick="changePassword()"><i class="fas fa-key"></i> Update Password</button>
+              <div class="save-confirm" id="sc-password"><i class="fas fa-circle-check"></i> Password updated successfully.</div>
+              <div class="save-confirm" id="sc-password-err" style="color:var(--danger);"><i class="fas fa-circle-exclamation"></i> <span id="pw-err-msg"></span></div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECURITY LOG -->
+        <div class="page" id="page-security">
+          <div class="page-header">
+            <h1>Security Log</h1>
+            <p>Login attempts and admin actions recorded in this session.</p>
+          </div>
+          <div class="table-wrap">
+            <div class="table-toolbar">
+              <h3>Activity Log</h3>
+              <button class="btn-sm danger" onclick="clearLog()"><i class="fas fa-trash"></i> Clear Log</button>
+            </div>
+            <div style="padding: 0 20px 20px;">
+              <ul class="log-list" id="logList"></ul>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Submission Detail Modal -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Quote Request Detail</h3>
+        <button class="modal-close" onclick="closeModal()"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button class="btn-action primary" id="btnMarkReplied" onclick="markStatus('replied')">
+          <i class="fas fa-check-double"></i> Mark Replied
+        </button>
+        <button class="btn-action secondary" id="btnMarkRead" onclick="markStatus('read')">
+          <i class="fas fa-eye"></i> Mark Read
+        </button>
+        <button class="btn-action del" onclick="deleteEntry()">
+          <i class="fas fa-trash"></i> Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toastContainer"></div>
+
+  <script>
+  /* ============================================================
+     VERIDIAN EDGE ADMIN — All logic
+     Security model:
+       • Credentials hashed with SHA-256 (Web Crypto API)
+       • Form submissions AES-GCM encrypted before localStorage
+       • Brute-force lockout (5 attempts → 5-min block)
+       • Session token (random, sessionStorage only)
+       • No data is ever sent to a server (static hosting)
+     ============================================================ */
+
+  // ===== CONSTANTS =====
+  const ADMIN_KEY   = 've_admin_creds';    // stores {userhash, passhash}
+  const DATA_KEY    = 've_submissions';    // stores encrypted payload
+  const SETTINGS_KEY= 've_settings';
+  const LOG_KEY     = 've_seclog';
+  const LOCKOUT_KEY = 've_lockout';
+  const SESSION_KEY = 've_sess';           // sessionStorage
+
+  // Default credentials (SHA-256 of "admin" / "Veridian@2025")
+  // These are overridden once the admin saves a new password
+  const DEFAULT_USER = 'admin';
+  const DEFAULT_PASS = 'Veridian@2025';
+
+  // Crypto helpers
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function getAESKey(password) {
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(password.padEnd(32,'x').slice(0,32)),
+      { name: 'AES-GCM' }, false, ['encrypt','decrypt']
+    );
+    return keyMaterial;
+  }
+
+  async function aesEncrypt(data, password) {
+    const key = await getAESKey(password);
+    const iv  = crypto.getRandomValues(new Uint8Array(12));
+    const enc = await crypto.subtle.encrypt(
+      { name:'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(data))
+    );
+    const combined = new Uint8Array(iv.byteLength + enc.byteLength);
+    combined.set(iv, 0); combined.set(new Uint8Array(enc), iv.byteLength);
+    return btoa(String.fromCharCode(...combined));
+  }
+
+  async function aesDecrypt(b64, password) {
+    try {
+      const combined = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+      const iv  = combined.slice(0, 12);
+      const data= combined.slice(12);
+      const key = await getAESKey(password);
+      const dec = await crypto.subtle.decrypt({ name:'AES-GCM', iv }, key, data);
+      return JSON.parse(new TextDecoder().decode(dec));
+    } catch { return null; }
+  }
+
+  // Derive AES password from stored hash (so we don't store plaintext key)
+  function getEncKey() {
+    return sessionStorage.getItem(SESSION_KEY) || 'fallback';
+  }
+
+  // ===== CREDENTIAL MANAGEMENT =====
+  async function loadCreds() {
+    const stored = localStorage.getItem(ADMIN_KEY);
+    if (stored) return JSON.parse(stored);
+    // First run — hash defaults and store
+    const uh = await sha256(DEFAULT_USER);
+    const ph = await sha256(DEFAULT_PASS);
+    const creds = { userhash: uh, passhash: ph };
+    localStorage.setItem(ADMIN_KEY, JSON.stringify(creds));
+    return creds;
+  }
+
+  // ===== LOCKOUT =====
+  function getLockout() {
+    const v = localStorage.getItem(LOCKOUT_KEY);
+    return v ? JSON.parse(v) : { attempts: 0, until: 0 };
+  }
+  function setLockout(obj) { localStorage.setItem(LOCKOUT_KEY, JSON.stringify(obj)); }
+  function isLockedOut() {
+    const l = getLockout();
+    return l.until > Date.now();
+  }
+  function lockoutRemaining() {
+    return Math.ceil((getLockout().until - Date.now()) / 1000);
+  }
+
+  // ===== LOGIN =====
+  async function doLogin() {
+    if (isLockedOut()) {
+      showLoginError(`Too many attempts. Try again in ${lockoutRemaining()}s.`);
+      startLockoutTimer();
+      return;
+    }
+    const user = document.getElementById('loginUser').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    if (!user || !pass) { showLoginError('Please enter username and password.'); return; }
+
+    const creds = await loadCreds();
+    const uh    = await sha256(user);
+    const ph    = await sha256(pass);
+
+    if (uh === creds.userhash && ph === creds.passhash) {
+      // Reset lockout on success
+      setLockout({ attempts: 0, until: 0 });
+      // Store session token
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b=>b.toString(16).padStart(2,'0')).join('');
+      sessionStorage.setItem(SESSION_KEY, ph.slice(0,32)); // use first 32 chars of hash as enc key
+      sessionStorage.setItem('ve_sess_token', token);
+      addLog('ok', `Login successful — user: ${user}`);
+      enterDash();
+    } else {
+      const l = getLockout();
+      l.attempts = (l.attempts || 0) + 1;
+      if (l.attempts >= 5) {
+        l.until = Date.now() + 5 * 60 * 1000; // 5-minute lockout
+        setLockout(l);
+        addLog('fail', `Lockout triggered after 5 failed attempts`);
+        showLoginError('Too many failed attempts. Locked for 5 minutes.');
+        startLockoutTimer();
+      } else {
+        setLockout(l);
+        addLog('fail', `Failed login attempt ${l.attempts}/5`);
+        showLoginError(`Invalid credentials. ${5 - l.attempts} attempt(s) remaining.`);
+      }
+    }
+  }
+
+  document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('loginUser').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+  function showLoginError(msg) {
+    const el = document.getElementById('loginError');
+    document.getElementById('loginErrorMsg').textContent = msg;
+    el.style.display = 'flex';
+  }
+
+  let lockoutInterval = null;
+  function startLockoutTimer() {
+    const el = document.getElementById('lockoutTimer');
+    el.style.display = 'block';
+    if (lockoutInterval) clearInterval(lockoutInterval);
+    lockoutInterval = setInterval(() => {
+      if (!isLockedOut()) { el.style.display='none'; clearInterval(lockoutInterval); return; }
+      el.textContent = `Account locked. Try again in ${lockoutRemaining()} second(s).`;
+    }, 1000);
+  }
+
+  function doLogout() {
+    sessionStorage.clear();
+    addLog('info', 'Admin signed out');
+    document.body.classList.remove('authed');
+    document.getElementById('loginPass').value = '';
+    toast('Signed out successfully.', 'ok');
+  }
+
+  function enterDash() {
+    document.body.classList.add('authed');
+    loadOverview();
+    loadSubmissions();
+    loadSettings();
+    loadLog();
+    toast('Welcome back, Admin.', 'ok');
+  }
+
+  // Guard all admin actions
+  function requireAuth() {
+    if (!sessionStorage.getItem('ve_sess_token')) { doLogout(); return false; }
+    return true;
+  }
+
+  // ===== NAVIGATION =====
+  function showPage(name, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    if (btn) btn.classList.add('active');
+    if (name === 'submissions') loadSubmissions();
+    if (name === 'overview')    loadOverview();
+    if (name === 'settings')    loadSettings();
+    if (name === 'security')    loadLog();
+  }
+
+  // ===== SUBMISSIONS =====
+  let allSubmissions = [];
+  let activeId = null;
+
+  async function loadSubmissions() {
+    if (!requireAuth()) return;
+    const raw = localStorage.getItem(DATA_KEY);
+    if (!raw) { allSubmissions = []; }
+    else {
+      const dec = await aesDecrypt(raw, getEncKey());
+      allSubmissions = dec || [];
+    }
+    renderTable(allSubmissions);
+    updateNavBadge();
+    updateOverviewStats();
+  }
+
+  function updateNavBadge() {
+    const unread = allSubmissions.filter(s => s.status === 'new').length;
+    document.getElementById('navBadge').textContent = unread;
+    document.getElementById('navBadge').style.display = unread ? 'inline' : 'none';
+  }
+
+  function renderTable(data, target = 'submissionsTable') {
+    const el = document.getElementById(target);
+    if (!data || data.length === 0) {
+      el.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No submissions yet. They'll appear here once visitors submit the quote form.</p></div>`;
+      if (target === 'submissionsTable') document.getElementById('subCount').textContent = 'All Submissions (0)';
+      return;
+    }
+    if (target === 'submissionsTable') document.getElementById('subCount').textContent = `All Submissions (${data.length})`;
+    const rows = data.slice().reverse().map(s => `
+      <tr onclick="openModal('${s.id}')" style="cursor:pointer;">
+        <td class="td-name">${esc(s.name)}</td>
+        <td>${esc(s.service)}</td>
+        <td class="td-mono">${esc(s.phone)}</td>
+        <td class="td-mono">${esc(s.location || '—')}</td>
+        <td><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></td>
+        <td class="td-mono" style="white-space:nowrap;">${formatDate(s.ts)}</td>
+        <td onclick="event.stopPropagation()">
+          <button class="btn-icon del" title="Delete" onclick="confirmDelete('${s.id}')"><i class="fas fa-trash-can"></i></button>
+        </td>
+      </tr>`).join('');
+    el.innerHTML = `<table>
+      <thead><tr>
+        <th>Name</th><th>Service</th><th>Phone</th><th>Location</th><th>Status</th><th>Received</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  function filterTable() {
+    const q = document.getElementById('searchBox').value.toLowerCase();
+    const filtered = allSubmissions.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      s.service.toLowerCase().includes(q) ||
+      (s.phone||'').includes(q) ||
+      (s.email||'').toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+  }
+
+  function updateOverviewStats() {
+    const now = new Date();
+    const month = now.getMonth(); const year = now.getFullYear();
+    const thisMonth = allSubmissions.filter(s => {
+      const d = new Date(s.ts);
+      return d.getMonth() === month && d.getFullYear() === year;
+    }).length;
+    const monthName = now.toLocaleString('default', { month: 'long' });
+
+    document.getElementById('ov-total').textContent  = allSubmissions.length;
+    document.getElementById('ov-unread').textContent = allSubmissions.filter(s => s.status === 'new').length;
+    document.getElementById('ov-replied').textContent= allSubmissions.filter(s => s.status === 'replied').length;
+    document.getElementById('ov-month').textContent  = thisMonth;
+    document.getElementById('ov-month-label').textContent = monthName;
+  }
+
+  function loadOverview() {
+    updateOverviewStats();
+    const recent = allSubmissions.slice(-5);
+    renderTable(recent, 'recentTable');
+  }
+
+  // ===== SAVE SUBMISSION (called from main site script) =====
+  // This async helper is exposed globally for the main site's script.js
+  window.veAdmin = {
+    async saveSubmission(data) {
+      const raw = localStorage.getItem(DATA_KEY);
+      let arr = [];
+      const key = sessionStorage.getItem(SESSION_KEY);
+      // Derive a static encryption key from the stored credential hash
+      // so submissions can be saved even without admin being logged in
+      const staticKey = localStorage.getItem('ve_enc_ref') || 'veridian_default_2025_key';
+      if (raw) { const dec = await aesDecrypt(raw, staticKey); arr = dec || []; }
+      arr.push({ ...data, id: genId(), ts: Date.now(), status: 'new' });
+      const enc = await aesEncrypt(arr, staticKey);
+      localStorage.setItem(DATA_KEY, enc);
+      // Store a reference key derivation marker (no plaintext secrets)
+      localStorage.setItem('ve_enc_ref', staticKey);
+    }
+  };
+
+  // ===== MODAL =====
+  function openModal(id) {
+    const s = allSubmissions.find(x => x.id === id);
+    if (!s) return;
+    activeId = id;
+    document.getElementById('modalBody').innerHTML = `
+      <div class="modal-row">
+        <div class="modal-field"><label>Name</label><p>${esc(s.name)}</p></div>
+        <div class="modal-field"><label>Phone / WhatsApp</label><p>${esc(s.phone)}</p></div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field"><label>Email</label><p>${esc(s.email || 'Not provided')}</p></div>
+        <div class="modal-field"><label>Service</label><p>${esc(s.service)}</p></div>
+      </div>
+      <div class="modal-field"><label>Project Location</label><p>${esc(s.location || 'Not provided')}</p></div>
+      <div class="modal-field"><label>Message / Details</label><p style="white-space:pre-wrap;">${esc(s.message || 'No message.')}</p></div>
+      <div class="modal-row">
+        <div class="modal-field"><label>Status</label><p><span class="tag tag-${s.status}">${s.status}</span></p></div>
+        <div class="modal-field"><label>Received</label><p>${formatDate(s.ts, true)}</p></div>
+      </div>`;
+    document.getElementById('modalOverlay').classList.add('open');
+    // Auto-mark as read
+    if (s.status === 'new') markStatus('read', false);
+  }
+
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    activeId = null;
+  }
+  document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+  async function markStatus(status, showToast = true) {
+    if (!activeId) return;
+    const idx = allSubmissions.findIndex(s => s.id === activeId);
+    if (idx < 0) return;
+    allSubmissions[idx].status = status;
+    await saveSubmissions();
+    if (showToast) { toast(`Marked as ${status}.`, 'ok'); closeModal(); }
+    renderTable(allSubmissions);
+    updateNavBadge(); updateOverviewStats();
+  }
+
+  function deleteEntry() {
+    if (!activeId) return;
+    allSubmissions = allSubmissions.filter(s => s.id !== activeId);
+    saveSubmissions().then(() => {
+      toast('Submission deleted.', 'ok');
+      closeModal();
+      renderTable(allSubmissions);
+      updateNavBadge(); updateOverviewStats();
+    });
+  }
+
+  function confirmDelete(id) {
+    activeId = id;
+    if (confirm('Delete this submission? This cannot be undone.')) deleteEntry();
+  }
+
+  async function clearAllSubmissions() {
+    if (!confirm('Delete ALL submissions? This is permanent.')) return;
+    allSubmissions = [];
+    localStorage.removeItem(DATA_KEY);
+    renderTable([]);
+    updateNavBadge(); updateOverviewStats();
+    toast('All submissions cleared.', 'ok');
+    addLog('info', 'Admin cleared all submissions');
+  }
+
+  async function saveSubmissions() {
+    const staticKey = localStorage.getItem('ve_enc_ref') || 'veridian_default_2025_key';
+    const enc = await aesEncrypt(allSubmissions, staticKey);
+    localStorage.setItem(DATA_KEY, enc);
+  }
+
+  // ===== CSV EXPORT =====
+  function exportCSV() {
+    if (!allSubmissions.length) { toast('No submissions to export.', 'err'); return; }
+    const cols = ['name','phone','email','service','location','message','status','ts'];
+    const header = cols.join(',');
+    const rows = allSubmissions.map(s =>
+      cols.map(c => `"${(s[c]||'').toString().replace(/"/g,'""')}"`).join(',')
+    );
+    const csv = [header, ...rows].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url;
+    a.download = `veridian_quotes_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    addLog('info', 'Admin exported CSV');
+    toast('CSV exported.', 'ok');
+  }
+
+  // ===== SETTINGS =====
+  const DEFAULT_SETTINGS = {
+    wa: '971552951578',
+    wa_display: '+971-55-2951578',
+    email: 'info@veridianedgellc.com',
+    stat_projects: '100+',
+    stat_years: '2+',
+    stat_satisfaction: '98%',
+    stat_rating: '5★'
+  };
+
+  function loadSettings() {
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    const s = stored ? JSON.parse(stored) : DEFAULT_SETTINGS;
+    document.getElementById('set-wa').value           = s.wa || '';
+    document.getElementById('set-wa-display').value   = s.wa_display || '';
+    document.getElementById('set-email').value        = s.email || '';
+    document.getElementById('stat-projects').value    = s.stat_projects || '';
+    document.getElementById('stat-years').value       = s.stat_years || '';
+    document.getElementById('stat-satisfaction').value= s.stat_satisfaction || '';
+    document.getElementById('stat-rating').value      = s.stat_rating || '';
+  }
+
+  function saveSetting(type) {
+    if (!requireAuth()) return;
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    const s = stored ? JSON.parse(stored) : { ...DEFAULT_SETTINGS };
+
+    if (type === 'whatsapp') {
+      s.wa = document.getElementById('set-wa').value.replace(/\D/g,'');
+      s.wa_display = document.getElementById('set-wa-display').value.trim();
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+      const snippet = `<!-- WhatsApp links — replace all occurrences -->
+href="https://wa.me/${s.wa}"
+<span>+${s.wa}</span>  ← display number`;
+      document.getElementById('wa-snippet').value = snippet;
+      document.getElementById('sc-whatsapp-code').style.display = 'block';
+      showConfirm('whatsapp');
+      addLog('info', `WhatsApp number updated to ${s.wa}`);
+    }
+
+    if (type === 'email') {
+      s.email = document.getElementById('set-email').value.trim();
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+      document.getElementById('email-snippet').value = s.email;
+      document.getElementById('sc-email-code').style.display = 'block';
+      showConfirm('email');
+      addLog('info', `Email updated to ${s.email}`);
+    }
+
+    if (type === 'stats') {
+      s.stat_projects     = document.getElementById('stat-projects').value.trim();
+      s.stat_years        = document.getElementById('stat-years').value.trim();
+      s.stat_satisfaction = document.getElementById('stat-satisfaction').value.trim();
+      s.stat_rating       = document.getElementById('stat-rating').value.trim();
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+      const snippet = `<div class="hero-stats">
+  <div class="stat">
+    <span class="stat-number">${s.stat_projects}</span>
+    <span class="stat-label">Projects Completed</span>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat">
+    <span class="stat-number">${s.stat_years}</span>
+    <span class="stat-label">Years in UAE</span>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat">
+    <span class="stat-number">${s.stat_satisfaction}</span>
+    <span class="stat-label">Client Satisfaction</span>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat">
+    <span class="stat-number">${s.stat_rating}</span>
+    <span class="stat-label">Average Rating</span>
+  </div>
+</div>`;
+      document.getElementById('stats-snippet').value = snippet;
+      document.getElementById('sc-stats-code').style.display = 'block';
+      showConfirm('stats');
+      addLog('info', 'Hero stats updated');
+    }
+  }
+
+  function showConfirm(id) {
+    const el = document.getElementById('sc-' + id);
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  // ===== CHANGE PASSWORD =====
+  async function changePassword() {
+    if (!requireAuth()) return;
+    const cur    = document.getElementById('pw-current').value;
+    const newPw  = document.getElementById('pw-new').value;
+    const conf   = document.getElementById('pw-confirm').value;
+    const errEl  = document.getElementById('sc-password-err');
+    const okEl   = document.getElementById('sc-password');
+    errEl.classList.remove('show'); okEl.classList.remove('show');
+
+    if (newPw.length < 8) { document.getElementById('pw-err-msg').textContent = 'New password must be at least 8 characters.'; errEl.classList.add('show'); return; }
+    if (newPw !== conf)   { document.getElementById('pw-err-msg').textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+
+    const creds = await loadCreds();
+    const curH  = await sha256(cur);
+    if (curH !== creds.passhash) { document.getElementById('pw-err-msg').textContent = 'Current password is incorrect.'; errEl.classList.add('show'); return; }
+
+    const newH = await sha256(newPw);
+    creds.passhash = newH;
+    localStorage.setItem(ADMIN_KEY, JSON.stringify(creds));
+    // Update session enc key
+    sessionStorage.setItem(SESSION_KEY, newH.slice(0,32));
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+    okEl.classList.add('show');
+    addLog('ok', 'Admin password changed successfully');
+    toast('Password updated.', 'ok');
+    setTimeout(() => okEl.classList.remove('show'), 4000);
+  }
+
+  // ===== SECURITY LOG =====
+  let secLog = [];
+  function addLog(type, msg) {
+    const stored = localStorage.getItem(LOG_KEY);
+    secLog = stored ? JSON.parse(stored) : [];
+    secLog.push({ type, msg, ts: Date.now() });
+    if (secLog.length > 200) secLog = secLog.slice(-200);
+    localStorage.setItem(LOG_KEY, JSON.stringify(secLog));
+    if (document.getElementById('page-security').classList.contains('active')) loadLog();
+  }
+
+  function loadLog() {
+    const stored = localStorage.getItem(LOG_KEY);
+    secLog = stored ? JSON.parse(stored) : [];
+    const list = document.getElementById('logList');
+    if (!secLog.length) { list.innerHTML = '<li class="log-item" style="color:var(--text2);">No log entries yet.</li>'; return; }
+    list.innerHTML = secLog.slice().reverse().map(l => `
+      <li class="log-item">
+        <div class="log-icon ${l.type}"><i class="fas fa-${l.type==='ok'?'check':l.type==='fail'?'xmark':'info'}"></i></div>
+        <span>${esc(l.msg)}</span>
+        <span class="log-time">${formatDate(l.ts, true)}</span>
+      </li>`).join('');
+  }
+
+  function clearLog() {
+    localStorage.removeItem(LOG_KEY); secLog = [];
+    loadLog(); toast('Log cleared.', 'ok');
+  }
+
+  // ===== TOAST =====
+  function toast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<i class="fas fa-${type==='ok'?'circle-check':type==='err'?'circle-exclamation':'circle-info'}"></i> ${esc(msg)}`;
+    document.getElementById('toastContainer').appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+
+  // ===== UTILS =====
+  function esc(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function formatDate(ts, full = false) {
+    const d = new Date(ts);
+    if (full) return d.toLocaleString('en-AE', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    return d.toLocaleDateString('en-AE', { day:'2-digit', month:'short', year:'numeric' });
+  }
+
+  // ===== INIT =====
+  // Check if session is already active (e.g. page refresh)
+  if (sessionStorage.getItem('ve_sess_token')) {
+    enterDash();
+  }
+  // Pre-init credentials on first load
+  loadCreds();
+  </script>
+</body>
+</html>
