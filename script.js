@@ -10,7 +10,7 @@
 //   2. Click Deploy → Manage Deployments → copy the Web App URL
 //   3. It looks like: https://script.google.com/macros/s/AKfy.../exec
 // NOTE: The project editor URL (/home/projects/...) is WRONG — it won't work.
-const APPS_SCRIPT_URL ='https://script.google.com/macros/s/AKfycbw3zn2uziOqJlPt3ShTu7L9l_BeRTW2Z2UT2PQwEGBjzlNO3SogDsccFNm9KkMt1xZE/exec';
+const APPS_SCRIPT_URL ='https://script.google.com/macros/s/AKfycbwN6TdLaVjwUMqEk1tt8bulAQxIUqKyVRSGDklWSK_KB2DFme8wfuIClus3cKt1WbGq/exec';
 // ────────────────────────────────────────────────────────────
 
 
@@ -125,15 +125,10 @@ async function submitForm(e) {
   }
 
   try {
-    // IMPORTANT: We use Content-Type: text/plain to avoid a CORS preflight request.
-    // Google Apps Script on GitHub Pages only allows "simple" requests (no preflight).
-    // The body is still JSON — Apps Script parses it from postData.contents.
-    await fetch(APPS_SCRIPT_URL, {
-      method:  'POST',
-      mode:    'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body:    JSON.stringify(formData),
-    });
+    // Use hidden iframe + form POST — this is the only reliable way to POST to Google
+    // Apps Script from GitHub Pages. fetch() with no-cors fails silently because Apps
+    // Script responds with a 302 redirect that opaque mode cannot follow.
+    await _iframePost(APPS_SCRIPT_URL, JSON.stringify(formData));
     _showSuccess(form, btn, success);
   } catch (err) {
     console.error('[Veridian] Submission error:', err);
@@ -141,6 +136,36 @@ async function submitForm(e) {
     _localFallbackSave(formData);
     _showSuccess(form, btn, success);
   }
+}
+
+
+// ── iframe POST helper ────────────────────────────────────────
+// fetch() + no-cors silently drops Apps Script 302 redirects.
+// A hidden form POST into a hidden iframe follows redirects natively
+// and requires zero CORS headers — the most reliable way to hit Apps Script.
+function _iframePost(url, jsonBody) {
+  return new Promise((resolve) => {
+    const frameId = '_ve_frame_' + Date.now();
+    const iframe  = document.createElement('iframe');
+    iframe.name   = frameId;
+    iframe.style.cssText = 'display:none;position:absolute;width:0;height:0;border:0;';
+    document.body.appendChild(iframe);
+    const form = document.createElement('form');
+    form.method  = 'POST';
+    form.action  = url;
+    form.target  = frameId;
+    form.enctype = 'text/plain';
+    const input = document.createElement('input');
+    input.type  = 'hidden';
+    input.name  = jsonBody;
+    input.value = '';
+    form.appendChild(input);
+    document.body.appendChild(form);
+    const cleanup = () => { iframe.remove(); form.remove(); };
+    iframe.onload = () => { cleanup(); resolve(); };
+    setTimeout(() => { cleanup(); resolve(); }, 8000);
+    form.submit();
+  });
 }
 
 function _showSuccess(form, btn, success) {

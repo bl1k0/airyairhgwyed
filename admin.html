@@ -603,10 +603,15 @@
   // The DEPLOYED /exec URL — NOT the project editor URL.
   // ✅ Correct:  https://script.google.com/macros/s/AKfy.../exec
   // ❌ Wrong:    https://script.google.com/home/projects/...
-  const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbw3zn2uziOqJlPt3ShTu7L9l_BeRTW2Z2UT2PQwEGBjzlNO3SogDsccFNm9KkMt1xZE/exec';
+  const APPS_SCRIPT_URL='https://script.google.com/macros/s/AKfycbwN6TdLaVjwUMqEk1tt8bulAQxIUqKyVRSGDklWSK_KB2DFme8wfuIClus3cKt1WbGq/exec';
 
-  // ── ADMIN SECRET — must match ADMIN_SECRET in your Apps Script ──
-  const ADMIN_SECRET = 'veridian_admin_2025';
+  // ── ADMIN SECRET ─────────────────────────────────────────────
+  // ⚠ SECURITY: This file is public on GitHub Pages — never store the raw secret here.
+  // The admin panel uses the password you log in with as the Apps Script secret,
+  // so the secret is never in the source code. See enterDash() below.
+  // In Apps Script, set: const ADMIN_SECRET = 'your-strong-secret-here';
+  // Then set the same value as the admin login password in DEFAULT_PASS below.
+  let ADMIN_SECRET = null; // populated from admin password after login
   // ────────────────────────────────────────────────────────────
 
   const ADMIN_KEY    = 've_admin_creds';
@@ -649,7 +654,10 @@
     const creds = await loadCreds();
     if (await sha256(user) === creds.userhash && await sha256(pass) === creds.passhash) {
       setLockout({ attempts:0, until:0 });
-      sessionStorage.setItem(SESSION_KEY, 'true');
+      // Derive the Apps Script secret from the admin password.
+      // The password IS the secret — this way it never appears in source code.
+      ADMIN_SECRET = pass;
+      sessionStorage.setItem(SESSION_KEY, btoa(pass)); // store encoded pass for session restore
       addLog('ok', `Login successful — user: ${user}`);
       enterDash();
     } else {
@@ -1085,7 +1093,8 @@
 
   // ── Init ─────────────────────────────────────────────────────
   loadCreds(); // pre-hash defaults on first load
-  if (sessionStorage.getItem(SESSION_KEY)) enterDash();
+  const _sess = sessionStorage.getItem(SESSION_KEY);
+  if (_sess) { try { ADMIN_SECRET = atob(_sess); } catch(_){} enterDash(); }
   </script>
 </body>
 </html>
