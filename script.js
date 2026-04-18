@@ -367,10 +367,18 @@ async function _logRateLimit(ident) {
 
 async function _uploadPhotos(files) {
   const urls = [];
+  const base = SUPABASE_URL.replace(/\/$/, '');
   for (const file of files) {
+    // Sanitise filename so the whole path is already URL-safe. We must NOT
+    // URL-encode the '/' separators — Supabase Storage treats the path
+    // segments as folder prefixes, and encoded slashes make the public URL
+    // unreachable (image appears broken in the admin panel).
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
-    const path = `${new Date().toISOString().slice(0,10)}/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`;
-    const uploadUrl = SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/quote-photos/' + encodeURIComponent(path);
+    const folder   = new Date().toISOString().slice(0, 10);          // 2026-04-18
+    const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safeName}`;
+    const path     = `${folder}/${filename}`;
+
+    const uploadUrl = `${base}/storage/v1/object/quote-photos/${path}`;
     const res = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
@@ -382,11 +390,13 @@ async function _uploadPhotos(files) {
       body: file,
     });
     if (!res.ok) {
-      console.warn('[Veridian] Photo upload failed:', file.name, await res.text().catch(()=>res.status));
+      const errText = await res.text().catch(() => String(res.status));
+      console.warn('[Veridian] Photo upload failed:', file.name, res.status, errText);
       continue;
     }
-    const publicUrl = SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/public/quote-photos/' + encodeURIComponent(path);
+    const publicUrl = `${base}/storage/v1/object/public/quote-photos/${path}`;
     urls.push(publicUrl);
+    console.info('[Veridian] Uploaded photo →', publicUrl);
   }
   return urls;
 }

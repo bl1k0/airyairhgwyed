@@ -992,7 +992,8 @@
           ${s.email ? `<a href="mailto:${esc(s.email)}?subject=Re: Your request ${esc(s.ref_number||'')} - Veridian Edge"><i class="fas fa-envelope"></i> Email</a>` : ''}
           ${s.ref_number ? `<button onclick="copyText('${esc(statusUrl)}', 'Status link copied')"><i class="fas fa-link"></i> Copy status link</button>` : ''}
         </div>
-      </div>`;
+      </div>
+      ${renderWabotSection(s)}`;
     // Refresh action buttons with new pipeline statuses
     const actions = document.querySelector('#modalOverlay .modal-actions');
     if (actions) actions.innerHTML = `
@@ -1004,6 +1005,61 @@
     `;
     document.getElementById('modalOverlay').classList.add('open');
     if ((s.status || 'new') === 'new') markStatus('contacted', false);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // WABOT INTEGRATION — shows live WhatsApp conversation state per quote
+  // and lets the admin send a reply that goes through wabot → WhatsApp.
+  // Fields are populated by the wabot sync worker; if the columns aren't
+  // set yet this section is hidden so the existing UI stays unchanged.
+  // ═══════════════════════════════════════════════════════════════
+  function renderWabotSection(s) {
+    if (!s.wabot_conversation_id && !s.wabot_session_state) return '';
+    const stateMap = {
+      BOT:      { label: '🤖 Bot handling',  color: '#3b82f6' },
+      WAITING:  { label: '⏳ Waiting',       color: '#f59e0b' },
+      HUMAN:    { label: '🧑 Human agent',   color: '#10b981' },
+      CLOSED:   { label: '✓ Closed',         color: '#6b7280' },
+    };
+    const st   = stateMap[s.wabot_session_state] || { label: s.wabot_session_state || '—', color: '#6b7280' };
+    const last = s.wabot_last_message_at ? formatDate(s.wabot_last_message_at, true) : '—';
+    const unread = s.wabot_unread_count || 0;
+    const agent  = s.wabot_assigned_agent || 'Unassigned';
+    return `
+      <div class="modal-field" style="margin-top:8px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.15)">
+        <label><i class="fab fa-whatsapp"></i> WhatsApp (wabot)</label>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:13px;margin-bottom:8px">
+          <span style="padding:3px 10px;border-radius:12px;background:${st.color}22;color:${st.color}">${st.label}</span>
+          <span>Agent: <strong>${esc(agent)}</strong></span>
+          <span>Last msg: <strong>${last}</strong></span>
+          ${unread ? `<span style="color:#ef4444">${unread} unread</span>` : ''}
+        </div>
+        <textarea id="wabotReplyBody" rows="3"
+          placeholder="Type a WhatsApp reply — it will be sent through the wabot agent channel…"
+          style="width:100%;padding:8px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:rgba(255,255,255,0.05);color:inherit;font-family:inherit;resize:vertical"></textarea>
+        <div style="margin-top:6px">
+          <button class="btn-action primary" onclick="sendWabotReply()"><i class="fab fa-whatsapp"></i> Send via wabot</button>
+          <span id="wabotReplyMsg" style="font-size:12px;margin-left:8px;color:#9ca3af"></span>
+        </div>
+      </div>`;
+  }
+
+  async function sendWabotReply() {
+    const body = (document.getElementById('wabotReplyBody') || {}).value || '';
+    const msg  = document.getElementById('wabotReplyMsg');
+    if (!body.trim()) { if (msg) msg.textContent = 'Reply is empty'; return; }
+    if (!activeId)    { if (msg) msg.textContent = 'No active quote'; return; }
+    try {
+      msg.textContent = 'sending…';
+      const { data, error } = await sb.rpc('wabot_reply_send', { p_quote_id: activeId, p_body: body.trim() });
+      if (error) throw error;
+      msg.textContent = '✓ queued for delivery';
+      document.getElementById('wabotReplyBody').value = '';
+      toast('Reply queued — wabot will send it shortly.', 'ok');
+    } catch (e) {
+      msg.textContent = '✗ ' + (e.message || 'failed');
+      toast('Reply failed: ' + (e.message || ''), 'err');
+    }
   }
 
   function copyText(text, msg) {
