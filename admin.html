@@ -220,9 +220,27 @@
       display: inline-block; padding: 3px 10px; border-radius: 99px;
       font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
     }
-    .tag-new     { background: rgba(79,142,247,0.12); color: var(--accent);   border: 1px solid rgba(79,142,247,0.25); }
-    .tag-read    { background: rgba(148,163,184,0.08); color: var(--text2);   border: 1px solid var(--border); }
-    .tag-replied { background: rgba(34,197,94,0.1);    color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+    .tag-new       { background: rgba(79,142,247,0.12); color: var(--accent);   border: 1px solid rgba(79,142,247,0.25); }
+    .tag-contacted { background: rgba(245,158,11,0.1);  color: var(--warn);     border: 1px solid rgba(245,158,11,0.25); }
+    .tag-quoted    { background: rgba(45,212,191,0.1);  color: var(--accent2);  border: 1px solid rgba(45,212,191,0.25); }
+    .tag-won       { background: rgba(34,197,94,0.1);   color: var(--success);  border: 1px solid rgba(34,197,94,0.25); }
+    .tag-lost      { background: rgba(240,64,64,0.08);  color: var(--danger);   border: 1px solid rgba(240,64,64,0.25); }
+    .tag-read      { background: rgba(148,163,184,0.08); color: var(--text2);   border: 1px solid var(--border); }
+    .tag-replied   { background: rgba(34,197,94,0.1);    color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+    .ref-chip      { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--accent2); background: rgba(45,212,191,0.08); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(45,212,191,0.2); }
+    .photo-thumbs  { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .photo-thumbs a { display: block; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border2); }
+    .photo-thumbs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .quick-actions a, .quick-actions button {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600;
+      text-decoration: none; background: var(--bg3); border: 1px solid var(--border2);
+      color: var(--text); cursor: pointer; font-family: inherit;
+      transition: border-color .15s, color .15s, background .15s;
+    }
+    .quick-actions a:hover, .quick-actions button:hover { border-color: var(--accent); color: var(--accent); }
+    .quick-actions .wa:hover { border-color:#25d366; color:#25d366; background: rgba(37,211,102,0.08); }
     .btn-icon {
       background: none; border: none; color: var(--text2); cursor: pointer;
       padding: 5px 8px; border-radius: 6px; transition: all .15s;
@@ -452,9 +470,9 @@
               <div class="sc-sub">Needs attention</div>
             </div>
             <div class="stat-card success">
-              <div class="sc-label">Replied</div>
+              <div class="sc-label">Won</div>
               <div class="sc-value" id="ov-replied">—</div>
-              <div class="sc-sub">Follow-up done</div>
+              <div class="sc-sub">Confirmed projects</div>
             </div>
             <div class="stat-card warn">
               <div class="sc-label">This Month</div>
@@ -785,9 +803,10 @@
       const d = new Date(s.created_at);
       return d.getMonth() === month && d.getFullYear() === year;
     }).length;
+    const isWon = s => s.status === 'won' || s.status === 'replied';   // back-compat
     document.getElementById('ov-total').textContent       = allSubmissions.length;
     document.getElementById('ov-unread').textContent      = allSubmissions.filter(s => (s.status||'new') === 'new').length;
-    document.getElementById('ov-replied').textContent     = allSubmissions.filter(s => s.status === 'replied').length;
+    document.getElementById('ov-replied').textContent     = allSubmissions.filter(isWon).length;
     document.getElementById('ov-month').textContent       = thisMonth;
     document.getElementById('ov-month-label').textContent = now.toLocaleString('default', { month:'long' });
     document.getElementById('subCount').textContent       = `All Submissions (${allSubmissions.length})`;
@@ -800,9 +819,14 @@
       el.innerHTML = `<div class="empty-state"><i class="fas fa-inbox"></i><p>No submissions yet. They'll appear here in real-time once visitors submit the quote form.</p></div>`;
       return;
     }
-    const rows = data.map(s => `
+    const rows = data.map(s => {
+      const ref = s.ref_number ? `<span class="ref-chip">${esc(s.ref_number)}</span>` : '<span style="color:var(--text3)">—</span>';
+      const photoCount = Array.isArray(s.photo_urls) ? s.photo_urls.length : 0;
+      const photoIcon = photoCount > 0 ? `<i class="fas fa-paperclip" title="${photoCount} photo${photoCount===1?'':'s'}" style="color:var(--text2);margin-left:6px;"></i>` : '';
+      return `
       <tr class="${freshIds.has(s.id) ? 'fresh' : ''}" onclick="openModal('${esc(s.id)}')" style="cursor:pointer;">
-        <td class="td-name">${esc(s.name)}</td>
+        <td>${ref}</td>
+        <td class="td-name">${esc(s.name)}${photoIcon}</td>
         <td>${esc(s.service)}</td>
         <td class="td-mono">${esc(s.phone)}</td>
         <td class="td-mono">${esc(s.location || '—')}</td>
@@ -811,9 +835,10 @@
         <td onclick="event.stopPropagation()">
           <button class="btn-icon del" title="Delete" onclick="confirmDelete('${esc(s.id)}')"><i class="fas fa-trash-can"></i></button>
         </td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
     el.innerHTML = `<table>
-      <thead><tr><th>Name</th><th>Service</th><th>Phone</th><th>Location</th><th>Status</th><th>Received</th><th></th></tr></thead>
+      <thead><tr><th>Ref</th><th>Name</th><th>Service</th><th>Phone</th><th>Location</th><th>Status</th><th>Received</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
   }
@@ -821,10 +846,12 @@
   function filterTable() {
     const q = document.getElementById('searchBox').value.toLowerCase();
     const filtered = allSubmissions.filter(s =>
-      (s.name    || '').toLowerCase().includes(q) ||
-      (s.service || '').toLowerCase().includes(q) ||
-      (s.phone   || '').includes(q) ||
-      (s.email   || '').toLowerCase().includes(q)
+      (s.name       || '').toLowerCase().includes(q) ||
+      (s.service    || '').toLowerCase().includes(q) ||
+      (s.phone      || '').includes(q) ||
+      (s.email      || '').toLowerCase().includes(q) ||
+      (s.ref_number || '').toLowerCase().includes(q) ||
+      (s.location   || '').toLowerCase().includes(q)
     );
     renderTable(filtered, 'submissionsTable');
   }
@@ -917,23 +944,73 @@
     const s = allSubmissions.find(x => x.id === id);
     if (!s) return;
     activeId = id;
+
+    const phoneDigits = (s.phone || '').replace(/\D/g, '');
+    const waNumber    = phoneDigits.startsWith('971') ? phoneDigits
+                      : phoneDigits.startsWith('0')   ? '971' + phoneDigits.slice(1)
+                      : phoneDigits;
+    const waMsg = encodeURIComponent(
+      `Hi ${s.name || 'there'}, this is Veridian Edge Technical Services regarding your request${s.ref_number ? ' ' + s.ref_number : ''} for ${s.service || 'services'}. How can we help?`
+    );
+    const statusUrl = `${location.origin}${location.pathname.replace(/admin\.html$/,'')}status.html?ref=${encodeURIComponent(s.ref_number || '')}`;
+
+    const photos = Array.isArray(s.photo_urls) ? s.photo_urls : [];
+    const photoHtml = photos.length
+      ? `<div class="modal-field"><label>Attached Photos (${photos.length})</label>
+           <div class="photo-thumbs">
+             ${photos.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener"><img src="${esc(u)}" alt="photo" loading="lazy" /></a>`).join('')}
+           </div>
+         </div>`
+      : '';
+
+    const refHtml = s.ref_number
+      ? `<div class="modal-field"><label>Reference</label><p><span class="ref-chip">${esc(s.ref_number)}</span></p></div>`
+      : '';
+
     document.getElementById('modalBody').innerHTML = `
       <div class="modal-row">
-        <div class="modal-field"><label>Name</label><p>${esc(s.name)}</p></div>
+        ${refHtml || '<div class="modal-field"><label>Name</label><p>'+esc(s.name)+'</p></div>'}
+        <div class="modal-field"><label>Received</label><p>${formatDate(s.created_at, true)}</p></div>
+      </div>
+      ${refHtml ? `<div class="modal-field"><label>Name</label><p>${esc(s.name)}</p></div>` : ''}
+      <div class="modal-row">
         <div class="modal-field"><label>Phone / WhatsApp</label><p>${esc(s.phone)}</p></div>
+        <div class="modal-field"><label>Email</label><p>${esc(s.email || 'Not provided')}</p></div>
       </div>
       <div class="modal-row">
-        <div class="modal-field"><label>Email</label><p>${esc(s.email || 'Not provided')}</p></div>
         <div class="modal-field"><label>Service</label><p>${esc(s.service)}</p></div>
+        <div class="modal-field"><label>Status</label><p><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></p></div>
       </div>
       <div class="modal-field"><label>Project Location</label><p>${esc(s.location || 'Not provided')}</p></div>
       <div class="modal-field"><label>Message / Details</label><p style="white-space:pre-wrap;">${esc(s.message || 'No message.')}</p></div>
-      <div class="modal-row">
-        <div class="modal-field"><label>Status</label><p><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></p></div>
-        <div class="modal-field"><label>Received</label><p>${formatDate(s.created_at, true)}</p></div>
+      ${photoHtml}
+      <div class="modal-field">
+        <label>Quick Actions</label>
+        <div class="quick-actions">
+          <a class="wa" href="https://wa.me/${waNumber}?text=${waMsg}" target="_blank" rel="noopener"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+          <a href="tel:${esc(s.phone)}"><i class="fas fa-phone"></i> Call</a>
+          ${s.email ? `<a href="mailto:${esc(s.email)}?subject=Re: Your request ${esc(s.ref_number||'')} - Veridian Edge"><i class="fas fa-envelope"></i> Email</a>` : ''}
+          ${s.ref_number ? `<button onclick="copyText('${esc(statusUrl)}', 'Status link copied')"><i class="fas fa-link"></i> Copy status link</button>` : ''}
+        </div>
       </div>`;
+    // Refresh action buttons with new pipeline statuses
+    const actions = document.querySelector('#modalOverlay .modal-actions');
+    if (actions) actions.innerHTML = `
+      <button class="btn-action secondary" onclick="markStatus('contacted')"><i class="fas fa-phone"></i> Contacted</button>
+      <button class="btn-action secondary" onclick="markStatus('quoted')"><i class="fas fa-file-invoice"></i> Quoted</button>
+      <button class="btn-action primary"   onclick="markStatus('won')"><i class="fas fa-trophy"></i> Won</button>
+      <button class="btn-action del"       onclick="markStatus('lost')"><i class="fas fa-xmark"></i> Lost</button>
+      <button class="btn-action del"       onclick="deleteEntry()" title="Delete"><i class="fas fa-trash"></i></button>
+    `;
     document.getElementById('modalOverlay').classList.add('open');
-    if ((s.status || 'new') === 'new') markStatus('read', false);
+    if ((s.status || 'new') === 'new') markStatus('contacted', false);
+  }
+
+  function copyText(text, msg) {
+    try {
+      navigator.clipboard.writeText(text);
+      toast(msg || 'Copied.', 'ok');
+    } catch (_) { toast('Copy failed.', 'err'); }
   }
 
   function closeModal() {
@@ -981,9 +1058,9 @@
   // ═══════════════════════════════════════════════════════════════
   function exportCSV() {
     if (!allSubmissions.length) { toast('No submissions to export.', 'err'); return; }
-    const cols = ['name','phone','email','service','location','message','status','created_at'];
+    const cols = ['ref_number','name','phone','email','service','location','message','status','created_at','updated_at'];
     const csv  = [cols.join(','), ...allSubmissions.map(s =>
-      cols.map(c => `"${(s[c]||'').toString().replace(/"/g,'""')}"`).join(',')
+      cols.map(c => `"${(s[c]==null?'':s[c]).toString().replace(/"/g,'""')}"`).join(',')
     )].join('\r\n');
     const a = Object.assign(document.createElement('a'), {
       href:     URL.createObjectURL(new Blob([csv], { type:'text/csv' })),

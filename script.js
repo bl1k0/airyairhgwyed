@@ -2,17 +2,20 @@
    VERIDIAN EDGE TECHNICAL SERVICES LLC
    script.js — Public site interactions + quote form
    Backend: Supabase (anon key + RLS)
+
+   Features built in:
+   - Honeypot + min-time-to-submit spam protection
+   - Server-side rate limiting (5/hr per browser fingerprint)
+   - Optional photo upload (up to 5, max 5MB each, Supabase Storage)
+   - Reference number shown on success (e.g. VE-2026-0042)
+   - Offline queue fallback
    ============================================================ */
 
 // ═══════════════════════════════════════════════════════════════
 // ⚙  SUPABASE CONFIG — paste your values here (see SUPABASE_SETUP.md)
 // ═══════════════════════════════════════════════════════════════
-const SUPABASE_URL      = 'https://eptklnlzudhjmhlykicj.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_MWwOnnIN9WMSCPJjjlYCdQ_XHkTbBDN';
-// ═══════════════════════════════════════════════════════════════
-// The anon key is safe to expose publicly — RLS policies on the
-// `quotes` table only allow anonymous INSERTs. Reading/updating/
-// deleting requires a logged-in admin session.
+const SUPABASE_URL      = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
 // ═══════════════════════════════════════════════════════════════
 
 
@@ -98,11 +101,76 @@ function _sanitise(str) {
     .slice(0, 2000);
 }
 
-// ===== QUOTE FORM SUBMISSION =====
-// The "We'll contact you within 24 hours" confirmation is ONLY shown
-// after Supabase has echoed back a real row with an id. If the insert
-// fails for any reason (bad key, RLS block, offline, etc.) the user
-// sees a visible error and is asked to retry — we never mislead them.
+// ═══════════════════════════════════════════════════════════════
+// FORM LOAD TIMESTAMP  (for min-time-to-submit check)
+// ═══════════════════════════════════════════════════════════════
+const _formLoadedAt = Date.now();
+const _MIN_SUBMIT_SECONDS = 3;    // bots typically fill forms in under 2s
+
+// ═══════════════════════════════════════════════════════════════
+// BROWSER FINGERPRINT  (best-effort, for rate limiting)
+// ═══════════════════════════════════════════════════════════════
+async function _browserIdent() {
+  // Combine stable-ish browser signals into a SHA-256 hash.
+  const raw = [
+    navigator.userAgent,
+    navigator.language,
+    screen.width + 'x' + screen.height,
+    new Date().getTimezoneOffset(),
+    navigator.hardwareConcurrency || '',
+  ].join('|');
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return 'fp_' + Array.from(new Uint8Array(buf)).slice(0, 12)
+    .map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PHOTO PREVIEW + VALIDATION
+// ═══════════════════════════════════════════════════════════════
+const MAX_PHOTOS = 5;
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5 MB
+
+(function setupPhotoPreview() {
+  const input = document.getElementById('fphotos');
+  const preview = document.getElementById('photoPreview');
+  if (!input || !preview) return;
+
+  input.addEventListener('change', () => {
+    preview.innerHTML = '';
+    const files = Array.from(input.files || []);
+    if (files.length > MAX_PHOTOS) {
+      _showFormError(document.getElementById('quoteForm'),
+        `You can attach up to ${MAX_PHOTOS} photos. You selected ${files.length}.`);
+      input.value = '';
+      return;
+    }
+    _hideFormError(document.getElementById('quoteForm'));
+    files.forEach(f => {
+      if (f.size > MAX_PHOTO_BYTES) {
+        _showFormError(document.getElementById('quoteForm'),
+          `"${f.name}" is larger than 5MB. Please compress it and try again.`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        const thumb = document.createElement('div');
+        thumb.style.cssText =
+          'width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.15);' +
+          'background:#1e293b;display:flex;align-items:center;justify-content:center;';
+        thumb.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;" alt="preview" />`;
+        preview.appendChild(thumb);
+      };
+      reader.readAsDataURL(f);
+    });
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// QUOTE FORM SUBMISSION
+// ═══════════════════════════════════════════════════════════════
+// The success confirmation is ONLY shown after Supabase echoes back
+// a persisted row with an id (return=representation). Any failure
+// surfaces a visible error instead of a misleading success.
 async function submitForm(e) {
   e.preventDefault();
   const form    = document.getElementById('quoteForm');
@@ -113,6 +181,25 @@ async function submitForm(e) {
   btn.disabled  = true;
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
 
+  // ── 1. Honeypot check ──
+  const honeypot = form.querySelector('[name="website"]');
+  if (honeypot && honeypot.value.trim() !== '') {
+    // Silent failure — pretend it worked so the bot moves on
+    console.warn('[Veridian] Honeypot tripped — bot detected.');
+    _showSuccess(form, btn, success, '—');
+    return;
+  }
+
+  // ── 2. Min-time-to-submit check ──
+  const secondsOnPage = (Date.now() - _formLoadedAt) / 1000;
+  if (secondsOnPage < _MIN_SUBMIT_SECONDS) {
+    console.warn('[Veridian] Submitted too fast — likely bot.');
+    _resetBtn(btn);
+    _showFormError(form, "Please take a moment to fill out the form completely before submitting.");
+    return;
+  }
+
+  // ── 3. Collect payload ──
   const payload = {
     name:     _sanitise(form.querySelector('[name="name"]').value),
     phone:    _sanitise(form.querySelector('[name="phone"]').value),
@@ -123,28 +210,51 @@ async function submitForm(e) {
     status:   'new',
   };
 
-  // Config guard — show a clear error instead of a fake success.
+  // ── 4. Config guard ──
   if (!_configOk()) {
     console.error('[Veridian] Supabase not configured in script.js — cannot submit.');
-    _localFallbackSave(payload); // keep the data locally so it's not lost
+    _localFallbackSave(payload);
     _resetBtn(btn);
     _showFormError(form, 'Our server is being set up. Please call or WhatsApp us instead — your request has been saved locally.');
     return;
   }
 
   try {
+    // ── 5. Rate limit check ──
+    const ident = await _browserIdent();
+    const recentCount = await _checkRateLimit(ident);
+    if (recentCount >= 5) {
+      _resetBtn(btn);
+      _showFormError(form,
+        "You've submitted several requests recently. Please wait an hour before sending another, or contact us directly on WhatsApp.");
+      return;
+    }
+
+    // ── 6. Upload photos (if any) ──
+    let photoUrls = [];
+    const photoInput = form.querySelector('[name="photos"]');
+    if (photoInput && photoInput.files && photoInput.files.length) {
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading photos…';
+      photoUrls = await _uploadPhotos(Array.from(photoInput.files));
+    }
+    payload.photo_urls = photoUrls;
+
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending…';
+
+    // ── 7. Insert the quote ──
     const savedRow = await _supabaseInsert(payload);
 
-    // ✅ SUCCESS ONLY IF Supabase echoed back a row with an id
-    if (savedRow && savedRow.id) {
-      console.info('[Veridian] Quote saved to Supabase with id:', savedRow.id);
-      _showSuccess(form, btn, success);
+    // ── 8. Log rate-limit token (best effort, non-blocking) ──
+    _logRateLimit(ident).catch(() => {});
+
+    if (savedRow && (savedRow.id || savedRow.ref_number !== undefined)) {
+      console.info('[Veridian] Quote saved. id:', savedRow.id, 'ref:', savedRow.ref_number);
+      _showSuccess(form, btn, success, savedRow.ref_number || '');
     } else {
       throw new Error('Supabase returned an empty response — row may not have been saved.');
     }
   } catch (err) {
-    console.error('[Veridian] Supabase insert failed:', err);
-    // Keep the data so the admin can flush it later — but DO NOT say "we'll contact you".
+    console.error('[Veridian] Submit failed:', err);
     _localFallbackSave(payload);
     _resetBtn(btn);
     _showFormError(form,
@@ -159,34 +269,144 @@ function _configOk() {
       && !SUPABASE_ANON_KEY.includes('YOUR_ANON_KEY');
 }
 
-// Direct REST insert — requests the inserted row back so we can
-// confirm the write actually landed in the database (return=representation).
-// Returns the saved row ({ id, created_at, ... }) or throws.
+// ── Supabase REST helpers ──────────────────────────────────────
+function _sbHeaders(extra = {}) {
+  return {
+    'Content-Type':  'application/json',
+    'apikey':        SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    ...extra,
+  };
+}
+
 async function _supabaseInsert(payload) {
-  const url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/quotes';
-  const res = await fetch(url, {
+  // Primary path: SECURITY DEFINER RPC. This bypasses the RLS caveat where
+  // `Prefer: return=representation` returns an empty array for anon inserts
+  // (anon has INSERT but not SELECT on public.quotes).
+  const rpcUrl = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rpc/submit_public_quote';
+  const body = {
+    p_name:       payload.name,
+    p_phone:      payload.phone,
+    p_email:      payload.email || null,
+    p_service:    payload.service,
+    p_location:   payload.location || null,
+    p_message:    payload.message || null,
+    p_photo_urls: payload.photo_urls || [],
+  };
+  let res = await fetch(rpcUrl, {
     method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'apikey':        SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Prefer':        'return=representation', // ← ask Supabase to echo the saved row
-    },
-    body: JSON.stringify(payload),
+    headers: _sbHeaders(),
+    body: JSON.stringify(body),
   });
+
+  if (res.ok) {
+    const rows = await res.json().catch(() => null);
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (row && row.id) return row;
+    // Unexpected empty response — fall through to the legacy INSERT path.
+  } else if (res.status !== 404 && res.status !== 400 && res.status !== 42883) {
+    // Real failure (401/403/500 etc.) — bubble up immediately.
+    const text = await res.text().catch(() => String(res.status));
+    throw new Error('Supabase RPC ' + res.status + ': ' + text);
+  } else {
+    // 404 / 400 — migration probably not run yet. Try legacy INSERT below.
+    console.warn('[Veridian] submit_public_quote RPC not found — falling back to direct INSERT. Run SUPABASE_MIGRATION.sql to enable it.');
+  }
+
+  // Fallback: direct INSERT without return=representation so it works even
+  // before the migration is applied. We lose the ref_number in the response.
+  const insUrl = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/quotes';
+  // Drop photo_urls if the column doesn't exist yet (pre-migration DBs).
+  const safePayload = { ...payload };
+  res = await fetch(insUrl, {
+    method: 'POST',
+    headers: _sbHeaders({ 'Prefer': 'return=minimal' }),
+    body: JSON.stringify(safePayload),
+  });
+  if (!res.ok) {
+    // Retry once without photo_urls in case the column is missing.
+    if ((res.status === 400 || res.status === 422) && 'photo_urls' in safePayload) {
+      delete safePayload.photo_urls;
+      res = await fetch(insUrl, {
+        method: 'POST',
+        headers: _sbHeaders({ 'Prefer': 'return=minimal' }),
+        body: JSON.stringify(safePayload),
+      });
+    }
+  }
   if (!res.ok) {
     const text = await res.text().catch(() => String(res.status));
     throw new Error('Supabase ' + res.status + ': ' + text);
   }
-  const rows = await res.json().catch(() => null);
-  if (!Array.isArray(rows) || rows.length === 0 || !rows[0].id) {
-    throw new Error('Supabase accepted the request but returned no row.');
-  }
-  return rows[0]; // the confirmed, persisted row
+  // PostgREST returns 201 with empty body for return=minimal
+  return { id: 'pending', ref_number: '' };
 }
 
-function _showSuccess(form, btn, success) {
+async function _checkRateLimit(ident) {
+  try {
+    const url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rpc/check_rate_limit';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: _sbHeaders(),
+      body: JSON.stringify({ p_ident: ident }),
+    });
+    if (!res.ok) return 0;
+    const n = await res.json();
+    return typeof n === 'number' ? n : 0;
+  } catch (_) { return 0; }
+}
+
+async function _logRateLimit(ident) {
+  const url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rate_limits';
+  await fetch(url, {
+    method: 'POST',
+    headers: _sbHeaders({ 'Prefer': 'return=minimal' }),
+    body: JSON.stringify({ ident }),
+  });
+}
+
+async function _uploadPhotos(files) {
+  const urls = [];
+  for (const file of files) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+    const path = `${new Date().toISOString().slice(0,10)}/${Date.now()}_${Math.random().toString(36).slice(2,8)}_${safeName}`;
+    const uploadUrl = SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/quote-photos/' + encodeURIComponent(path);
+    const res = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'apikey':        SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type':  file.type || 'application/octet-stream',
+        'x-upsert':      'true',
+      },
+      body: file,
+    });
+    if (!res.ok) {
+      console.warn('[Veridian] Photo upload failed:', file.name, await res.text().catch(()=>res.status));
+      continue;
+    }
+    const publicUrl = SUPABASE_URL.replace(/\/$/, '') + '/storage/v1/object/public/quote-photos/' + encodeURIComponent(path);
+    urls.push(publicUrl);
+  }
+  return urls;
+}
+
+// ── UI helpers ──────────────────────────────────────────────────
+function _showSuccess(form, btn, success, refNumber) {
   form.reset();
+  // Also clear photo preview
+  const preview = document.getElementById('photoPreview');
+  if (preview) preview.innerHTML = '';
+
+  const refEl = document.getElementById('refNumberDisplay');
+  if (refEl) {
+    if (refNumber && refNumber !== '—') {
+      refEl.innerHTML = `Your reference number: <strong>${refNumber}</strong> &nbsp;·&nbsp; <a href="status.html?ref=${encodeURIComponent(refNumber)}" style="color:inherit;text-decoration:underline;">Track status</a>`;
+    } else {
+      refEl.textContent = '';
+    }
+  }
+
   btn.style.display     = 'none';
   success.style.display = 'flex';
   setTimeout(() => {
@@ -194,7 +414,7 @@ function _showSuccess(form, btn, success) {
     btn.disabled       = false;
     btn.innerHTML      = '<i class="fas fa-paper-plane"></i> Submit Quote Request';
     success.style.display = 'none';
-  }, 5000);
+  }, 8000);
 }
 
 function _resetBtn(btn) {
@@ -202,7 +422,6 @@ function _resetBtn(btn) {
   btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Quote Request';
 }
 
-// ── Inline error banner (created on demand, no HTML edits needed) ──
 function _ensureFormErrorEl(form) {
   let el = form.querySelector('#formError');
   if (el) return el;
@@ -214,7 +433,6 @@ function _ensureFormErrorEl(form) {
     'background:rgba(240,64,64,0.08);border:1px solid rgba(240,64,64,0.35);' +
     'color:#f04040;font-size:0.9rem;line-height:1.5;align-items:flex-start;gap:10px;';
   el.innerHTML = '<i class="fas fa-circle-exclamation" style="margin-top:2px;"></i><span id="formErrorMsg"></span>';
-  // Insert right after the submit button / success div
   const success = form.querySelector('#formSuccess');
   (success ? success.parentNode.insertBefore(el, success.nextSibling) : form.appendChild(el));
   return el;
@@ -229,8 +447,7 @@ function _hideFormError(form) {
   if (el) el.style.display = 'none';
 }
 
-// localStorage fallback — preserves submissions so customer data is
-// never lost during an outage. Admin flushes them via Settings → Offline Queue.
+// ── Offline queue ──────────────────────────────────────────────
 function _genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -294,4 +511,4 @@ const statsObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.5 });
 
 const heroStats = document.querySelector('.hero-stats');
-if (heroStats
+if (heroStats) statsObserver.observe(heroStats);

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Track Your Request — Veridian Edge</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0a0c10;
+      --bg2:      #111520;
+      --bg3:      #181d2a;
+      --border:   rgba(255,255,255,0.08);
+      --border2:  rgba(255,255,255,0.15);
+      --accent:   #4f8ef7;
+      --accent2:  #2dd4bf;
+      --text:     #e2e8f0;
+      --text2:    #94a3b8;
+      --text3:    #64748b;
+      --danger:   #f04040;
+      --success:  #22c55e;
+      --warn:     #f59e0b;
+      --radius:   12px;
+      --shadow:   0 4px 24px rgba(0,0,0,0.5);
+    }
+    html { font-size: 15px; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: radial-gradient(1200px 600px at 10% -20%, rgba(79,142,247,0.12), transparent 60%),
+                  radial-gradient(900px 500px at 110% 110%, rgba(45,212,191,0.08), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .container { width: 100%; max-width: 560px; }
+    .logo-row { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 28px; }
+    .logo-mark {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff; letter-spacing: -1px;
+    }
+    .logo-text { font-weight: 700; color: var(--text); font-size: 15px; }
+    .logo-sub  { font-size: 11px; color: var(--text2); letter-spacing: .1em; text-transform: uppercase; }
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      padding: 40px 36px;
+      box-shadow: var(--shadow);
+    }
+    h1 { font-size: 1.55rem; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: var(--text2); font-size: 0.92rem; margin-bottom: 26px; }
+    .field { margin-bottom: 18px; }
+    label {
+      display: block; font-size: 0.78rem; font-weight: 600;
+      color: var(--text2); text-transform: uppercase; letter-spacing: .06em;
+      margin-bottom: 8px;
+    }
+    input[type="text"] {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 10px; padding: 13px 16px;
+      color: var(--text); font-family: 'DM Mono', monospace;
+      font-size: 1rem; letter-spacing: .08em; outline: none;
+      text-transform: uppercase;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,142,247,0.15);
+    }
+    button.primary {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent), #3570d4);
+      color: #fff; border: none; border-radius: 10px;
+      padding: 14px; font-family: inherit; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: opacity .2s, transform .15s;
+    }
+    button.primary:hover { opacity: .9; transform: translateY(-1px); }
+    button.primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    .error-msg {
+      display: none;
+      margin-top: 14px;
+      background: rgba(240,64,64,0.09);
+      border: 1px solid rgba(240,64,64,0.32);
+      color: var(--danger);
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      align-items: flex-start; gap: 8px;
+    }
+
+    .result {
+      display: none;
+      margin-top: 26px;
+      animation: fadeSlide .35s ease;
+    }
+    .result .ref-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 12px; margin-bottom: 24px; padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ref-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .ref-value { font-family: 'DM Mono', monospace; font-size: 1.15rem; font-weight: 600; color: var(--text); letter-spacing: .05em; }
+    .service-value { color: var(--text); font-size: 0.95rem; font-weight: 500; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 14px; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 600;
+      background: rgba(79,142,247,0.12);
+      border: 1px solid rgba(79,142,247,0.4);
+      color: var(--accent);
+    }
+    .status-badge .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 10px currentColor;
+    }
+    .status-badge.s-new       { background: rgba(79,142,247,0.10); border-color: rgba(79,142,247,0.4); color: var(--accent); }
+    .status-badge.s-contacted { background: rgba(245,158,11,0.10); border-color: rgba(245,158,11,0.4); color: var(--warn); }
+    .status-badge.s-quoted    { background: rgba(45,212,191,0.10); border-color: rgba(45,212,191,0.4); color: var(--accent2); }
+    .status-badge.s-won       { background: rgba(34,197,94,0.10);  border-color: rgba(34,197,94,0.4);  color: var(--success); }
+    .status-badge.s-lost      { background: rgba(240,64,64,0.08);  border-color: rgba(240,64,64,0.35); color: var(--danger); }
+
+    .status-label { font-size: 1.05rem; color: var(--text); font-weight: 500; margin: 18px 0 18px; }
+
+    /* timeline */
+    .timeline { margin-top: 20px; }
+    .step {
+      position: relative; padding-left: 28px;
+      padding-bottom: 18px;
+      border-left: 2px solid var(--border2);
+      color: var(--text3);
+      font-size: 0.88rem;
+    }
+    .step:last-child { border-left: 2px solid transparent; padding-bottom: 0; }
+    .step::before {
+      content: ''; position: absolute; left: -7px; top: 2px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--bg2);
+      border: 2px solid var(--border2);
+    }
+    .step.active::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 12px rgba(79,142,247,0.6); }
+    .step.done::before   { background: var(--success); border-color: var(--success); }
+    .step.current { color: var(--text); font-weight: 500; }
+    .step .s-title { display: block; margin-bottom: 2px; font-weight: 500; color: var(--text2); }
+    .step.active .s-title, .step.done .s-title { color: var(--text); }
+    .step .s-time  { font-size: 0.76rem; color: var(--text3); }
+
+    .meta-row {
+      margin-top: 22px; padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      font-size: 0.84rem; color: var(--text2);
+    }
+    .meta-row strong { display: block; color: var(--text); font-weight: 500; margin-top: 2px; }
+
+    .contact-row {
+      margin-top: 22px; padding-top: 18px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 10px; flex-wrap: wrap;
+      justify-content: center;
+    }
+    .contact-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 16px; border-radius: 10px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      color: var(--text); text-decoration: none;
+      font-size: 0.88rem; font-weight: 500;
+      transition: border-color .2s, transform .15s, background .2s;
+    }
+    .contact-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+    .contact-btn.wa:hover { border-color: #25d366; background: rgba(37,211,102,0.08); color: #25d366; }
+
+    .footer-note {
+      text-align: center; color: var(--text3); font-size: 0.78rem;
+      margin-top: 22px; line-height: 1.6;
+    }
+    .footer-note a { color: var(--accent); text-decoration: none; }
+    .footer-note a:hover { text-decoration: underline; }
+
+    .setup-warn {
+      display: none; margin-top: 14px;
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.3);
+      color: var(--warn); border-radius: 10px;
+      padding: 12px 14px; font-size: 0.84rem;
+    }
+
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 520px) {
+      .card { padding: 32px 24px; }
+      .meta-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="logo-row">
+      <div class="logo-mark">VE</div>
+      <div>
+        <div class="logo-text">Veridian Edge</div>
+        <div class="logo-sub">Technical Services LLC</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h1>Track your request</h1>
+      <p class="sub">Enter the reference number from your confirmation — e.g. <code style="font-family:'DM Mono',monospace;color:var(--accent2)">VE-2026-0042</code>.</p>
+
+      <form id="lookupForm" autocomplete="off">
+        <div class="field">
+          <label for="ref">Reference number</label>
+          <input type="text" id="ref" name="ref" placeholder="VE-YYYY-NNNN"
+                 pattern="VE-\d{4}-\d{4}" required autocapitalize="characters" />
+        </div>
+        <button class="primary" id="lookupBtn" type="submit">
+          <i class="fas fa-search"></i> Check status
+        </button>
+      </form>
+
+      <div class="error-msg" id="errorMsg" role="alert">
+        <i class="fas fa-circle-exclamation" style="margin-top:2px;"></i>
+        <span id="errorText">No request found with that reference number. Please double-check and try again.</span>
+      </div>
+
+      <div class="setup-warn" id="setupWarn">
+        <i class="fas fa-triangle-exclamation"></i>
+        This status page hasn't been fully configured yet. Please contact us directly using the options below.
+      </div>
+
+      <div class="result" id="result">
+        <div class="ref-row">
+          <div>
+            <div class="ref-label">Reference</div>
+            <div class="ref-value" id="rRef">—</div>
+          </div>
+          <div style="text-align:right">
+            <div class="ref-label">Service</div>
+            <div class="service-value" id="rService">—</div>
+          </div>
+        </div>
+
+        <div id="rBadge" class="status-badge s-new">
+          <span class="dot"></span>
+          <span id="rBadgeText">Received</span>
+        </div>
+        <div class="status-label" id="rLabel">Received — being reviewed</div>
+
+        <div class="timeline" id="rTimeline">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="meta-row">
+          <div>Submitted<strong id="rCreated">—</strong></div>
+          <div>Last updated<strong id="rUpdated">—</strong></div>
+        </div>
+
+        <div class="contact-row">
+          <a class="contact-btn wa" id="rWhatsapp" href="#" target="_blank" rel="noopener">
+            <i class="fab fa-whatsapp"></i> WhatsApp us
+          </a>
+          <a class="contact-btn" href="tel:+971581234567">
+            <i class="fas fa-phone"></i> Call
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-note">
+      Lost your reference number? <a href="index.html#contact">Contact us</a> with your name and phone number and we'll look it up.
+    </p>
+
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════
+    // ⚙ SUPABASE CONFIG — same values as script.js
+    // ═══════════════════════════════════════════════════════════════
+    const SUPABASE_URL      = 'https://YOUR_PROJECT.supabase.co';
+    const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY_HERE';
+    const WHATSAPP_NUMBER   = '971581234567'; // no + sign, no dashes
+
+    function configOk() {
+      return SUPABASE_URL && SUPABASE_ANON_KEY
+          && !SUPABASE_URL.includes('YOUR_PROJECT')
+          && !SUPABASE_ANON_KEY.includes('YOUR_ANON_KEY');
+    }
+
+    const form       = document.getElementById('lookupForm');
+    const btn        = document.getElementById('lookupBtn');
+    const refInput   = document.getElementById('ref');
+    const errBox     = document.getElementById('errorMsg');
+    const errText    = document.getElementById('errorText');
+    const result     = document.getElementById('result');
+    const setupWarn  = document.getElementById('setupWarn');
+
+    const STATUS_ORDER = ['new', 'contacted', 'quoted', 'won'];
+    const STATUS_STEPS = [
+      { key:'new',       title:'Request received',   desc:'We have your details and are reviewing.' },
+      { key:'contacted', title:'Team reached out',   desc:'Our team contacted you for details.' },
+      { key:'quoted',    title:'Quote sent',         desc:'Awaiting your confirmation.' },
+      { key:'won',       title:'Confirmed & scheduled', desc:'Work is in progress.' },
+    ];
+
+    // Pre-fill from ?ref=
+    const urlRef = new URLSearchParams(location.search).get('ref');
+    if (urlRef) { refInput.value = urlRef.toUpperCase(); }
+
+    function showError(msg) {
+      errText.textContent = msg;
+      errBox.style.display = 'flex';
+      result.style.display = 'none';
+    }
+    function hideError() { errBox.style.display = 'none'; setupWarn.style.display = 'none'; }
+    function resetBtn() {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-search"></i> Check status';
+    }
+    function fmtDate(s) {
+      if (!s) return '—';
+      try {
+        const d = new Date(s);
+        return d.toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      } catch (_) { return s; }
+    }
+    function buildTimeline(currentStatus, createdAt, updatedAt) {
+      const el = document.getElementById('rTimeline');
+      el.innerHTML = '';
+      if (currentStatus === 'lost') {
+        el.innerHTML = `<div class="step done"><span class="s-title">Request closed</span><span class="s-time">${fmtDate(updatedAt)}</span></div>`;
+        return;
+      }
+      const idx = STATUS_ORDER.indexOf(currentStatus);
+      STATUS_STEPS.forEach((step, i) => {
+        const cls = i < idx ? 'done' : i === idx ? 'active current' : '';
+        const when = i === 0 ? fmtDate(createdAt) : i === idx ? fmtDate(updatedAt) : '';
+        const div = document.createElement('div');
+        div.className = 'step ' + cls;
+        div.innerHTML = `
+          <span class="s-title">${step.title}</span>
+          <span class="s-time">${when || step.desc}</span>
+        `;
+        el.appendChild(div);
+      });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+      result.style.display = 'none';
+
+      const ref = refInput.value.trim().toUpperCase();
+      if (!/^VE-\d{4}-\d{4}$/.test(ref)) {
+        showError('That doesn\'t look like a valid reference number. It should be in the form VE-YYYY-NNNN.');
+        return;
+      }
+
+      if (!configOk()) {
+        btn.disabled = false;
+        setupWarn.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking…';
+
+      try {
+        const url = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rpc/get_quote_status';
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'apikey':        SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ p_ref: ref }),
+        });
+        if (!res.ok) {
+          const body = await res.text().catch(()=>String(res.status));
+          throw new Error('Lookup failed (' + res.status + '): ' + body);
+        }
+        const rows = await res.json();
+        const row = Array.isArray(rows) ? rows[0] : rows;
+        if (!row || !row.ref_number) {
+          resetBtn();
+          showError('No request found with that reference number. Please double-check and try again.');
+          return;
+        }
+
+        document.getElementById('rRef').textContent     = row.ref_number;
+        document.getElementById('rService').textContent = row.service || '—';
+        document.getElementById('rLabel').textContent   = row.status_label || '—';
+        document.getElementById('rCreated').textContent = fmtDate(row.created_at);
+        document.getElementById('rUpdated').textContent = fmtDate(row.updated_at);
+
+        const badge = document.getElementById('rBadge');
+        const badgeText = document.getElementById('rBadgeText');
+        badge.className = 'status-badge s-' + (row.status || 'new');
+        badgeText.textContent = (row.status || 'new').charAt(0).toUpperCase() + (row.status || 'new').slice(1);
+
+        buildTimeline(row.status || 'new', row.created_at, row.updated_at);
+
+        const waMsg = encodeURIComponent(
+          `Hi Veridian Edge, I'm checking on my request ${row.ref_number} (${row.service}).`
+        );
+        document.getElementById('rWhatsapp').href =
+          `https://wa.me/${WHATSAPP_NUMBER}?text=${waMsg}`;
+
+        result.style.display = 'block';
+        resetBtn();
+      } catch (err) {
+        console.error(err);
+        resetBtn();
+        showError('Sorry, we couldn\'t look that up right now. Please try again in a moment.');
+      }
+    });
+
+    // Auto-submit if ?ref= present
+    if (urlRef && /^VE-\d{4}-\d{4}$/.test(urlRef.toUpperCase())) {
+      setTimeout(() => form.requestSubmit(), 200);
+    }
+  </script>
+</body>
+</html>
