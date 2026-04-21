@@ -156,13 +156,15 @@
     // ═════════════════════════════════════════════════════════════════
     // ⚙  SUPABASE CONFIG — same values as admin.html / script.js.
     //    Keep these two constants in sync with the rest of the site.
+    //    TODO: Replace YOUR_SUPABASE_* and WABOT_API_URL with real values.
+    //    Do NOT commit real credentials to source control.
+    //    WABOT_API_URL: set to your wabot server's public URL
+    //      (e.g. 'https://wabot.veridianedgellc.com') or leave blank to skip
+    //      the wabot fallback and rely on Supabase contact_requests only.
     // ═════════════════════════════════════════════════════════════════
     window.VE_PORTAL_CONFIG = {
-      SUPABASE_URL:      'https://eptklnlzudhjmhlykicj.supabase.co',
-      SUPABASE_ANON_KEY: 'sb_publishable_MWwOnnIN9WMSCPJjjlYCdQ_XHkTbBDN',
-      // Optional — if set, the portal will POST new messages to this URL
-      // as a fallback path (wabot's /api/customer/contact). Leave blank
-      // to rely on Supabase contact_requests only.
+      SUPABASE_URL:      'YOUR_SUPABASE_PROJECT_URL',
+      SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY',
       WABOT_API_URL:     ''
     };
   </script>

@@ -234,6 +234,17 @@
     .tag-lost      { background: rgba(240,64,64,0.08);  color: var(--danger);   border: 1px solid rgba(240,64,64,0.25); }
     .tag-read      { background: rgba(148,163,184,0.08); color: var(--text2);   border: 1px solid var(--border); }
     .tag-replied   { background: rgba(34,197,94,0.1);    color: var(--success); border: 1px solid rgba(34,197,94,0.25); }
+    .status-editor { display: flex; flex-direction: column; gap: 10px; margin: 10px 0 14px; }
+    .status-editor-toolbar { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; flex-wrap: wrap; }
+    .status-row { display: grid; grid-template-columns: 1.1fr 1.3fr 90px 40px; gap: 10px; align-items: center;
+      padding: 10px 12px; border: 1px solid var(--border2); border-radius: 10px; background: var(--bg3); }
+    .status-row input[type="text"] { padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg2); color: var(--text); font-family: inherit; font-size: 0.85rem; }
+    .status-row input[type="color"] { width: 100%; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg2); cursor: pointer; }
+    .status-row .slug-in { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--accent); }
+    .status-row .btn-del-row { background: transparent; border: 1px solid transparent; color: var(--danger); font-size: 1rem; cursor: pointer; padding: 6px; border-radius: 6px; }
+    .status-row .btn-del-row:hover { background: rgba(240,64,64,0.08); border-color: rgba(240,64,64,0.25); }
+    .status-row .system-badge { font-size: 0.65rem; color: var(--text3); font-family: 'DM Mono', monospace; }
+    @media (max-width: 640px) { .status-row { grid-template-columns: 1fr 1fr; } .status-row input[type="color"], .status-row .btn-del-row { grid-column: span 1; } }
     .ref-chip      { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--accent2); background: rgba(45,212,191,0.08); padding: 3px 8px; border-radius: 6px; border: 1px solid rgba(45,212,191,0.2); }
     .photo-thumbs  { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .photo-thumbs a { display: block; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border2); }
@@ -771,6 +782,21 @@
               </div>
             </div>
 
+            <!-- ── QUOTE STATUS CUSTOMIZATION ── -->
+            <div class="settings-card full">
+              <h3><i class="fas fa-tags"></i> Quote Request Statuses</h3>
+              <p>Add, rename, recolor or remove the pipeline stages used for quotes (e.g. <em>new, contacted, quoted, won, lost</em>). Saved globally in Supabase — all admins see the same list immediately.</p>
+              <div class="status-editor-toolbar">
+                <button type="button" class="btn-sm" onclick="addQuoteStatus()"><i class="fas fa-plus"></i> Add status</button>
+                <button type="button" class="btn-sm" onclick="resetQuoteStatuses()" title="Restore defaults"><i class="fas fa-rotate-left"></i> Defaults</button>
+                <span id="sc-statuses-hint" style="font-size:0.78rem;color:var(--text2);margin-left:6px;"></span>
+              </div>
+              <div id="statusEditor" class="status-editor"></div>
+              <button class="btn-save" onclick="saveQuoteStatuses()"><i class="fas fa-save"></i> Save Statuses</button>
+              <div class="save-confirm" id="sc-statuses"><i class="fas fa-circle-check"></i> Statuses updated.</div>
+              <div class="save-confirm err-confirm" id="sc-statuses-err"><i class="fas fa-circle-exclamation"></i> <span id="sc-statuses-err-msg"></span></div>
+            </div>
+
             <!-- ── PASSWORD (Supabase Auth) ── -->
             <div class="settings-card full">
               <h3><i class="fas fa-key"></i> Change Password</h3>
@@ -836,9 +862,13 @@
 
   // ═══════════════════════════════════════════════════════════════
   // ⚙  SUPABASE CONFIG — paste your values here (see SUPABASE_SETUP.md)
+  // TODO: Replace YOUR_SUPABASE_PROJECT_URL and YOUR_SUPABASE_ANON_KEY
+  //   with your actual values from
+  //   https://supabase.com/dashboard/project/_/settings/api
+  //   Do NOT commit real credentials to source control.
   // ═══════════════════════════════════════════════════════════════
-  const SUPABASE_URL      = 'https://eptklnlzudhjmhlykicj.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_MWwOnnIN9WMSCPJjjlYCdQ_XHkTbBDN';
+  const SUPABASE_URL      = 'YOUR_SUPABASE_PROJECT_URL';
+  const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
   // ═══════════════════════════════════════════════════════════════
 
   const CONFIGURED = SUPABASE_URL && SUPABASE_ANON_KEY
@@ -925,6 +955,7 @@
     window._supaUser = user;
     loadSubmissions();
     loadSettings();
+    loadQuoteStatuses();
     loadLog();
     checkOfflineQueue();
     subscribeRealtime();
@@ -944,7 +975,7 @@
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
     if (btn) btn.classList.add('active');
-    if (name === 'settings') { loadSettings(); checkOfflineQueue(); updateSyncStatusCard(); }
+    if (name === 'settings') { loadSettings(); loadQuoteStatuses(); checkOfflineQueue(); updateSyncStatusCard(); }
     if (name === 'security') loadLog();
   }
 
@@ -1023,7 +1054,7 @@
         <td>${esc(s.service)}</td>
         <td class="td-mono">${esc(s.phone)}</td>
         <td class="td-mono">${esc(s.location || '—')}</td>
-        <td><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></td>
+        <td>${statusTagHtml(s.status || 'new')}</td>
         <td class="td-mono" style="white-space:nowrap;">${formatDate(s.created_at)}</td>
         <td onclick="event.stopPropagation()">
           <button class="btn-icon del" title="Delete" onclick="confirmDelete('${esc(s.id)}')"><i class="fas fa-trash-can"></i></button>
@@ -1423,7 +1454,7 @@
       </div>
       <div class="modal-row">
         <div class="modal-field"><label>Service</label><p>${esc(s.service)}</p></div>
-        <div class="modal-field"><label>Status</label><p><span class="tag tag-${s.status || 'new'}">${s.status || 'new'}</span></p></div>
+        <div class="modal-field"><label>Status</label><p>${statusTagHtml(s.status || 'new')}</p></div>
       </div>
       <div class="modal-field"><label>Project Location</label><p>${esc(s.location || 'Not provided')}</p></div>
       <div class="modal-field"><label>Message / Details</label><p style="white-space:pre-wrap;">${esc(s.message || 'No message.')}</p></div>
@@ -1438,17 +1469,39 @@
         </div>
       </div>
       ${renderWabotSection(s)}`;
-    // Refresh action buttons with new pipeline statuses
+    // Refresh action buttons dynamically from the configured status list.
+    // "new" is the inbox state — it's never shown as an action button.
     const actions = document.querySelector('#modalOverlay .modal-actions');
-    if (actions) actions.innerHTML = `
-      <button class="btn-action secondary" onclick="markStatus('contacted')"><i class="fas fa-phone"></i> Contacted</button>
-      <button class="btn-action secondary" onclick="markStatus('quoted')"><i class="fas fa-file-invoice"></i> Quoted</button>
-      <button class="btn-action primary"   onclick="markStatus('won')"><i class="fas fa-trophy"></i> Won</button>
-      <button class="btn-action del"       onclick="markStatus('lost')"><i class="fas fa-xmark"></i> Lost</button>
-      <button class="btn-action del"       onclick="deleteEntry()" title="Delete"><i class="fas fa-trash"></i></button>
-    `;
+    if (actions) {
+      const iconMap = {
+        contacted: 'fas fa-phone',
+        quoted:    'fas fa-file-invoice',
+        won:       'fas fa-trophy',
+        lost:      'fas fa-xmark',
+        replied:   'fas fa-check-double',
+        read:      'fas fa-eye',
+      };
+      const tierClass = (slug) => {
+        if (slug === 'won' || slug === 'replied') return 'primary';
+        if (slug === 'lost') return 'del';
+        return 'secondary';
+      };
+      const statusBtns = QUOTE_STATUSES
+        .filter(sl => sl !== 'new' && sl !== (s.status || ''))
+        .map(sl => {
+          const icon = iconMap[sl] || 'fas fa-tag';
+          const lbl  = esc(statusLabel(sl));
+          return `<button class="btn-action ${tierClass(sl)}" onclick="markStatus('${esc(sl)}')"><i class="${icon}"></i> ${lbl}</button>`;
+        }).join('');
+      actions.innerHTML = statusBtns +
+        `<button class="btn-action del" onclick="deleteEntry()" title="Delete"><i class="fas fa-trash"></i></button>`;
+    }
     document.getElementById('modalOverlay').classList.add('open');
-    if ((s.status || 'new') === 'new') markStatus('contacted', false);
+    // Auto-advance "new" rows into the next configured stage so the inbox empties.
+    if ((s.status || 'new') === 'new') {
+      const next = QUOTE_STATUSES.find(sl => sl !== 'new');
+      if (next) markStatus(next, false);
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -1575,6 +1628,161 @@
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // QUOTE STATUSES — customizable pipeline stored in Supabase app_settings
+  // ═══════════════════════════════════════════════════════════════
+  const DEFAULT_QUOTE_STATUSES = ['new','contacted','quoted','won','lost'];
+  const DEFAULT_STATUS_LABELS  = { new:'New', contacted:'Contacted', quoted:'Quoted', won:'Won', lost:'Lost' };
+  const DEFAULT_STATUS_COLORS  = {
+    new:       '#4f8ef7',
+    contacted: '#f59e0b',
+    quoted:    '#2dd4bf',
+    won:       '#22c55e',
+    lost:      '#f04040',
+    read:      '#94a3b8',
+    replied:   '#22c55e',
+  };
+  const SYSTEM_STATUSES = new Set(['new']); // always present, can recolor/relabel but can't delete
+  let QUOTE_STATUSES        = [...DEFAULT_QUOTE_STATUSES];
+  let QUOTE_STATUS_LABELS   = { ...DEFAULT_STATUS_LABELS };
+  let QUOTE_STATUS_COLORS   = { ...DEFAULT_STATUS_COLORS };
+
+  async function loadQuoteStatuses() {
+    if (!sb) return;
+    try {
+      const { data, error } = await sb
+        .from('app_settings')
+        .select('key,value')
+        .in('key', ['quote_statuses','quote_status_labels','quote_status_colors']);
+      if (error) throw error;
+      const map = {};
+      (data || []).forEach(r => { map[r.key] = r.value; });
+      if (Array.isArray(map.quote_statuses) && map.quote_statuses.length) {
+        QUOTE_STATUSES = map.quote_statuses.map(String).filter(Boolean);
+      }
+      if (map.quote_status_labels && typeof map.quote_status_labels === 'object') {
+        QUOTE_STATUS_LABELS = { ...DEFAULT_STATUS_LABELS, ...map.quote_status_labels };
+      }
+      if (map.quote_status_colors && typeof map.quote_status_colors === 'object') {
+        QUOTE_STATUS_COLORS = { ...DEFAULT_STATUS_COLORS, ...map.quote_status_colors };
+      }
+    } catch (e) {
+      // Table / rows may not exist yet — run SUPABASE_PATCH_3.sql. Fall back to defaults silently.
+      console.warn('[veridian] loadQuoteStatuses fallback:', e && e.message);
+    }
+    renderStatusEditor();
+  }
+
+  function renderStatusEditor() {
+    const el = document.getElementById('statusEditor');
+    if (!el) return;
+    el.innerHTML = QUOTE_STATUSES.map((slug, i) => {
+      const label = QUOTE_STATUS_LABELS[slug] || (slug.charAt(0).toUpperCase() + slug.slice(1));
+      const color = QUOTE_STATUS_COLORS[slug] || '#4f8ef7';
+      const locked = SYSTEM_STATUSES.has(slug);
+      return `
+        <div class="status-row" data-idx="${i}">
+          <div>
+            <input type="text" class="slug-in" value="${esc(slug)}" ${locked ? 'readonly title="system status — slug locked"' : ''}
+                   oninput="updateStatusField(${i}, 'slug', this.value)" placeholder="slug (e.g. in-progress)"/>
+            ${locked ? '<div class="system-badge">system</div>' : ''}
+          </div>
+          <input type="text" value="${esc(label)}" oninput="updateStatusField(${i}, 'label', this.value)" placeholder="Display label"/>
+          <input type="color" value="${esc(color)}" oninput="updateStatusField(${i}, 'color', this.value)" title="Tag color"/>
+          ${locked
+            ? '<span class="system-badge" style="text-align:center">—</span>'
+            : `<button type="button" class="btn-del-row" onclick="removeQuoteStatus(${i})" title="Remove"><i class="fas fa-trash"></i></button>`}
+        </div>`;
+    }).join('');
+  }
+
+  function addQuoteStatus() {
+    let base = 'custom', i = 1, slug = base;
+    const existing = new Set(QUOTE_STATUSES);
+    while (existing.has(slug)) { slug = base + '-' + (++i); }
+    QUOTE_STATUSES.push(slug);
+    QUOTE_STATUS_LABELS[slug] = 'New Stage';
+    QUOTE_STATUS_COLORS[slug] = '#8b5cf6';
+    renderStatusEditor();
+  }
+
+  function removeQuoteStatus(idx) {
+    const slug = QUOTE_STATUSES[idx];
+    if (!slug || SYSTEM_STATUSES.has(slug)) return;
+    if (!confirm(`Remove status "${slug}"? Existing quotes with this status will keep it until you change them manually.`)) return;
+    QUOTE_STATUSES.splice(idx, 1);
+    renderStatusEditor();
+  }
+
+  function updateStatusField(idx, field, value) {
+    const oldSlug = QUOTE_STATUSES[idx];
+    if (field === 'slug') {
+      if (SYSTEM_STATUSES.has(oldSlug)) return; // locked
+      const clean = (value || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 32);
+      if (!clean || clean === oldSlug) return;
+      if (QUOTE_STATUSES.includes(clean)) return; // no duplicates
+      QUOTE_STATUSES[idx] = clean;
+      QUOTE_STATUS_LABELS[clean] = QUOTE_STATUS_LABELS[oldSlug] || clean;
+      QUOTE_STATUS_COLORS[clean] = QUOTE_STATUS_COLORS[oldSlug] || '#4f8ef7';
+      delete QUOTE_STATUS_LABELS[oldSlug];
+      delete QUOTE_STATUS_COLORS[oldSlug];
+    } else if (field === 'label') {
+      QUOTE_STATUS_LABELS[oldSlug] = value;
+    } else if (field === 'color') {
+      QUOTE_STATUS_COLORS[oldSlug] = value;
+    }
+  }
+
+  function resetQuoteStatuses() {
+    if (!confirm('Reset status list, labels and colors to the built-in defaults? (Does not save until you click "Save Statuses".)')) return;
+    QUOTE_STATUSES      = [...DEFAULT_QUOTE_STATUSES];
+    QUOTE_STATUS_LABELS = { ...DEFAULT_STATUS_LABELS };
+    QUOTE_STATUS_COLORS = { ...DEFAULT_STATUS_COLORS };
+    renderStatusEditor();
+  }
+
+  async function saveQuoteStatuses() {
+    const errEl = document.getElementById('sc-statuses-err');
+    const okEl  = document.getElementById('sc-statuses');
+    const errMsg = document.getElementById('sc-statuses-err-msg');
+    if (errEl) errEl.classList.remove('show');
+    if (!sb) return;
+    // Ensure "new" is always present
+    if (!QUOTE_STATUSES.includes('new')) QUOTE_STATUSES.unshift('new');
+    try {
+      const { error } = await sb.rpc('admin_save_quote_statuses', {
+        p_statuses: QUOTE_STATUSES,
+        p_labels:   QUOTE_STATUS_LABELS,
+        p_colors:   QUOTE_STATUS_COLORS,
+      });
+      if (error) throw error;
+      if (okEl) okEl.classList.add('show');
+      setTimeout(() => okEl && okEl.classList.remove('show'), 3500);
+      toast('Quote statuses saved.', 'ok');
+      addLog('info', 'Updated quote status list');
+      // Re-render any open views so new labels/colors apply immediately
+      renderTable(allSubmissions, 'submissionsTable');
+      renderTable(allSubmissions.slice(0, 5), 'recentTable');
+      if (activeId) { try { openModal(activeId); } catch (_) {} }
+    } catch (e) {
+      if (errMsg) errMsg.textContent = (e && e.message) || 'Save failed.';
+      if (errEl)  errEl.classList.add('show');
+      toast('Save failed: ' + ((e && e.message) || 'unknown'), 'err');
+    }
+  }
+
+  // Helpers for dynamic tag rendering
+  function statusLabel(slug) { return QUOTE_STATUS_LABELS[slug] || (slug || 'new'); }
+  function statusColor(slug) { return QUOTE_STATUS_COLORS[slug] || '#4f8ef7'; }
+  function statusTagHtml(slug) {
+    const s = slug || 'new';
+    const c = statusColor(s);
+    const l = statusLabel(s);
+    // Use inline styles derived from the configured hex so new/custom statuses
+    // render correctly even without a .tag-<slug> CSS class.
+    return `<span class="tag" style="background:${c}1f;color:${c};border:1px solid ${c}55">${esc(l)}</span>`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // SETTINGS (WhatsApp / email / stats — stored locally)
   // ═══════════════════════════════════════════════════════════════
   const DEFAULT_SETTINGS = {
@@ -1686,24 +1894,37 @@
     const remaining = [];
     const errors = [];
     for (const row of queue) {
-      // Use the SECURITY DEFINER RPC — direct INSERT fails RLS because the
-      // INSERT policy is scoped to the `anon` role only (authenticated users
-      // have no INSERT policy on public.quotes). The RPC is GRANTed to both
-      // anon and authenticated, so admins can flush offline-queued rows here.
-      const { error: rpcErr } = await sb.rpc('submit_public_quote', {
-        p_name:       row.name       || '',
-        p_phone:      row.phone      || '',
-        p_email:      row.email      || null,
-        p_service:    row.service    || '',
-        p_location:   row.location   || null,
-        p_message:    row.message    || null,
-        p_photo_urls: Array.isArray(row.photo_urls) ? row.photo_urls : []
+      // Use the SECURITY DEFINER v2 RPC with idempotency — a re-flush of the
+      // same queue (e.g. after a partial failure) will NOT create duplicate
+      // rows because p_idempotency_key is unique and already indexed DB-side.
+      const idemKey = row.idempotency_key
+        || ('flush_' + (row.id || Date.now()) + '_' + Math.random().toString(36).slice(2, 8));
+      let rpcErr = null;
+      const v2 = await sb.rpc('submit_public_quote_v2', {
+        p_name:             row.name       || '',
+        p_phone:            row.phone      || '',
+        p_email:            row.email      || null,
+        p_service:          row.service    || '',
+        p_location:         row.location   || null,
+        p_message:          row.message    || null,
+        p_photo_urls:       Array.isArray(row.photo_urls) ? row.photo_urls : [],
+        p_idempotency_key:  idemKey,
       });
+      if (v2.error) {
+        // v2 missing (old DB) → fall back to v1 without idempotency
+        const v1 = await sb.rpc('submit_public_quote', {
+          p_name:       row.name       || '',
+          p_phone:      row.phone      || '',
+          p_email:      row.email      || null,
+          p_service:    row.service    || '',
+          p_location:   row.location   || null,
+          p_message:    row.message    || null,
+          p_photo_urls: Array.isArray(row.photo_urls) ? row.photo_urls : []
+        });
+        rpcErr = v1.error;
+      }
       if (rpcErr) {
-        // Graceful fallback to direct insert in case the RPC isn't deployed
-        // (older Supabase projects). Most admin users have the service-level
-        // migration applied so this path is rare — but it keeps us working.
-        const { id: _omit, ts: _omit2, ...payload } = row;
+        const { id: _omit, ts: _omit2, idempotency_key: _omit3, ...payload } = row;
         const { error: insErr } = await sb.from('quotes').insert(payload);
         if (insErr) {
           fail++;

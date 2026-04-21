@@ -13,9 +13,14 @@
 
 // ═══════════════════════════════════════════════════════════════
 // ⚙  SUPABASE CONFIG — paste your values here (see SUPABASE_SETUP.md)
+// TODO: Replace YOUR_SUPABASE_PROJECT_URL and YOUR_SUPABASE_ANON_KEY
+//   with your actual values from
+//   https://supabase.com/dashboard/project/_/settings/api
+//   Do NOT commit real credentials to source control — the public anon
+//   key is enforced only by RLS and any misconfig exposes customer data.
 // ═══════════════════════════════════════════════════════════════
-const SUPABASE_URL      = 'https://eptklnlzudhjmhlykicj.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_MWwOnnIN9WMSCPJjjlYCdQ_XHkTbBDN';
+const SUPABASE_URL      = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 // ═══════════════════════════════════════════════════════════════
 
 
@@ -208,6 +213,7 @@ async function submitForm(e) {
     location: _sanitise(form.querySelector('[name="location"]').value),
     message:  _sanitise(form.querySelector('[name="message"]').value),
     status:   'new',
+    _idempotency_key: _makeIdempotencyKey(),  // one key per submit attempt
   };
 
   // ── 4. Config guard ──
@@ -279,66 +285,96 @@ function _sbHeaders(extra = {}) {
   };
 }
 
+// Stable per-submission idempotency key (survives retries inside one submit).
+function _makeIdempotencyKey() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'ik_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+
 async function _supabaseInsert(payload) {
-  // Primary path: SECURITY DEFINER RPC. This bypasses the RLS caveat where
-  // `Prefer: return=representation` returns an empty array for anon inserts
-  // (anon has INSERT but not SELECT on public.quotes).
-  const rpcUrl = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/rpc/submit_public_quote';
-  const body = {
-    p_name:       payload.name,
-    p_phone:      payload.phone,
-    p_email:      payload.email || null,
-    p_service:    payload.service,
-    p_location:   payload.location || null,
-    p_message:    payload.message || null,
-    p_photo_urls: payload.photo_urls || [],
+  // Anon users MUST submit via the SECURITY DEFINER RPC. Direct INSERT is
+  // also allowed by RLS but PostgREST's `return=representation` swallows the
+  // response for anon (no SELECT policy for anon) so we can't read the
+  // ref_number back. Preferred path → v2 RPC with idempotency.
+  const base    = SUPABASE_URL.replace(/\/$/, '');
+  const idemKey = payload._idempotency_key || _makeIdempotencyKey();
+
+  const bodyV2 = {
+    p_name:             payload.name,
+    p_phone:            payload.phone,
+    p_email:            payload.email || null,
+    p_service:          payload.service,
+    p_location:         payload.location || null,
+    p_message:          payload.message || null,
+    p_photo_urls:       payload.photo_urls || [],
+    p_idempotency_key:  idemKey,
   };
-  let res = await fetch(rpcUrl, {
-    method: 'POST',
+
+  // ── Path A: v2 RPC (idempotent) ──
+  let res = await fetch(base + '/rest/v1/rpc/submit_public_quote_v2', {
+    method:  'POST',
     headers: _sbHeaders(),
-    body: JSON.stringify(body),
+    body:    JSON.stringify(bodyV2),
   });
 
   if (res.ok) {
     const rows = await res.json().catch(() => null);
-    const row = Array.isArray(rows) ? rows[0] : rows;
-    if (row && row.id) return row;
-    // Unexpected empty response — fall through to the legacy INSERT path.
-  } else if (res.status !== 404 && res.status !== 400 && res.status !== 42883) {
-    // Real failure (401/403/500 etc.) — bubble up immediately.
+    const row  = Array.isArray(rows) ? rows[0] : rows;
+    if (row && row.id) {
+      if (row.was_duplicate) {
+        console.info('[Veridian] Idempotent dedupe — row already existed:', row.id);
+      }
+      return row;
+    }
+    // Empty response — fall through.
+  } else if (res.status !== 404 && res.status !== 400) {
+    // Real failure (401/403/500 etc.) — bubble up so we DON'T silently queue.
     const text = await res.text().catch(() => String(res.status));
-    throw new Error('Supabase RPC ' + res.status + ': ' + text);
+    throw new Error('Supabase v2 RPC ' + res.status + ': ' + text);
   } else {
-    // 404 / 400 — migration probably not run yet. Try legacy INSERT below.
-    console.warn('[Veridian] submit_public_quote RPC not found — falling back to direct INSERT. Run SUPABASE_MIGRATION.sql to enable it.');
+    console.warn('[Veridian] submit_public_quote_v2 not found — trying v1 RPC. Run SUPABASE_PATCH_3.sql to enable v2.');
   }
 
-  // Fallback: direct INSERT without return=representation so it works even
-  // before the migration is applied. We lose the ref_number in the response.
-  const insUrl = SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/quotes';
-  // Drop photo_urls if the column doesn't exist yet (pre-migration DBs).
-  const safePayload = { ...payload };
-  res = await fetch(insUrl, {
-    method: 'POST',
-    headers: _sbHeaders({ 'Prefer': 'return=minimal' }),
-    body: JSON.stringify(safePayload),
+  // ── Path B: v1 RPC fallback (no idempotency, but still SECURITY DEFINER) ──
+  const bodyV1 = { ...bodyV2 };
+  delete bodyV1.p_idempotency_key;
+  res = await fetch(base + '/rest/v1/rpc/submit_public_quote', {
+    method:  'POST',
+    headers: _sbHeaders(),
+    body:    JSON.stringify(bodyV1),
   });
-  if (!res.ok) {
-    // Retry once without photo_urls in case the column is missing.
-    if ((res.status === 400 || res.status === 422) && 'photo_urls' in safePayload) {
-      delete safePayload.photo_urls;
-      res = await fetch(insUrl, {
-        method: 'POST',
-        headers: _sbHeaders({ 'Prefer': 'return=minimal' }),
-        body: JSON.stringify(safePayload),
-      });
-    }
+  if (res.ok) {
+    const rows = await res.json().catch(() => null);
+    const row  = Array.isArray(rows) ? rows[0] : rows;
+    if (row && row.id) return row;
+  } else if (res.status !== 404 && res.status !== 400) {
+    const text = await res.text().catch(() => String(res.status));
+    throw new Error('Supabase v1 RPC ' + res.status + ': ' + text);
+  } else {
+    console.warn('[Veridian] submit_public_quote RPC also missing — falling back to direct INSERT.');
+  }
+
+  // ── Path C: direct INSERT as anon (works per public_insert_quotes RLS) ──
+  const insUrl = base + '/rest/v1/quotes';
+  const safePayload = { ...payload };
+  delete safePayload._idempotency_key;
+  res = await fetch(insUrl, {
+    method:  'POST',
+    headers: _sbHeaders({ 'Prefer': 'return=minimal' }),
+    body:    JSON.stringify(safePayload),
+  });
+  if (!res.ok && (res.status === 400 || res.status === 422) && 'photo_urls' in safePayload) {
+    delete safePayload.photo_urls;
+    res = await fetch(insUrl, {
+      method:  'POST',
+      headers: _sbHeaders({ 'Prefer': 'return=minimal' }),
+      body:    JSON.stringify(safePayload),
+    });
   }
   if (!res.ok) {
     const text = await res.text().catch(() => String(res.status));
     throw new Error('Supabase ' + res.status + ': ' + text);
   }
-  // PostgREST returns 201 with empty body for return=minimal
   return { id: 'pending', ref_number: '' };
 }
 
@@ -465,7 +501,15 @@ function _localFallbackSave(payload) {
   try {
     const key      = 've_offline_queue';
     const existing = JSON.parse(localStorage.getItem(key) || '[]');
-    existing.push({ ...payload, id: _genId(), ts: Date.now() });
+    // Persist a stable idempotency key with each queued row. When the admin
+    // later flushes the queue, the v2 RPC will use this key to guarantee
+    // rows that DID make it through on a later retry are not duplicated.
+    existing.push({
+      ...payload,
+      id: _genId(),
+      ts: Date.now(),
+      idempotency_key: payload._idempotency_key || _makeIdempotencyKey(),
+    });
     localStorage.setItem(key, JSON.stringify(existing));
   } catch (_) { /* storage quota or blocked — silently ignore */ }
 }
