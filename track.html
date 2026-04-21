@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Order Tracking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /*
+   * Phase 7 — Public order tracking.
+   * No auth; the URL token IS the auth. Applies tenant branding so the
+   * page looks native to whichever tenant the order belongs to.
+   */
+  :root {
+    --brand: #0ea5e9;
+    --brand-dark: #0369a1;
+    --accent: #38bdf8;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --danger: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 20px 0;
+    border-bottom: 1px solid var(--border); margin-bottom: 28px;
+  }
+  header img { height: 40px; width: auto; border-radius: 6px; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; color: var(--brand-dark); }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px; margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .status-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 13px; font-weight: 500; line-height: 1;
+  }
+  .pill-pending     { background: #fef3c7; color: #92400e; }
+  .pill-confirmed   { background: #dbeafe; color: #1e40af; }
+  .pill-in-progress { background: #e0e7ff; color: #3730a3; }
+  .pill-completed   { background: #dcfce7; color: #166534; }
+  .pill-cancelled   { background: #fee2e2; color: #991b1b; }
+  .pill-unpaid      { background: #fee2e2; color: #991b1b; }
+  .pill-partial     { background: #fef3c7; color: #92400e; }
+  .pill-paid        { background: #dcfce7; color: #166534; }
+  .pill-refunded    { background: #e5e7eb; color: #374151; }
+  h2 { font-size: 22px; margin: 0 0 6px 0; }
+  .meta { color: var(--muted); font-size: 13px; font-family: ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .desc { color: var(--text); line-height: 1.5; margin: 16px 0; white-space: pre-wrap; }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 12px 16px; padding: 16px 0; font-size: 14px; border-top: 1px solid var(--border); }
+  .kv dt { color: var(--muted); }
+  .kv dd { margin: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+  tfoot td { border-bottom: none; font-weight: 600; padding-top: 16px; }
+  .section-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .spinner { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--muted); }
+  .error { padding: 24px; text-align: center; color: var(--danger); }
+  @media (max-width: 520px) {
+    .kv { grid-template-columns: 1fr; gap: 4px 0; padding: 12px 0; }
+    .kv dt { font-size: 11px; text-transform: uppercase; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img id="brand-logo" src="" alt="" style="display:none">
+    <h1 id="brand-name">Order tracking</h1>
+  </header>
+  <div id="root"><div class="spinner">Loading order…</div></div>
+</div>
+<script>
+(function(){
+  // Parse the tracking token. Accepts both /track/<token> and /track.html?t=<token>.
+  const params = new URLSearchParams(location.search);
+  let token = params.get('t') || params.get('token') || '';
+  if (!token) {
+    const m = location.pathname.match(/\/track\/([a-f0-9]+)/i);
+    if (m) token = m[1];
+  }
+  const root = document.getElementById('root');
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+  function pillClass(kind, value){
+    if (!value) return 'pill';
+    return 'pill pill-' + String(value).toLowerCase().replace(/_/g,'-');
+  }
+  function money(amount, currency){
+    if (amount == null || amount === '') return '—';
+    const n = Number(amount);
+    if (!isFinite(n)) return '—';
+    return (currency || '') + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtDt(iso){
+    if (!iso) return '—';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    } catch(_){ return iso; }
+  }
+
+  function applyBranding(brand){
+    if (!brand) return;
+    if (brand.name) {
+      document.getElementById('brand-name').textContent = brand.name;
+      document.title = brand.name + ' — Order tracking';
+    }
+    if (brand.logo_url) {
+      const img = document.getElementById('brand-logo');
+      img.src = brand.logo_url;
+      img.style.display = 'inline-block';
+      img.alt = brand.name || '';
+    }
+    const root = document.documentElement;
+    if (brand.brand_color)  root.style.setProperty('--brand', brand.brand_color);
+    if (brand.brand_color)  root.style.setProperty('--brand-dark', brand.brand_color);
+    if (brand.accent_color) root.style.setProperty('--accent', brand.accent_color);
+  }
+
+  function renderOrder(o){
+    applyBranding(o.brand);
+    const items = Array.isArray(o.items) ? o.items : [];
+    const itemsHtml = items.length === 0 ? '' : `
+      <div class="card">
+        <div class="section-title">Line items</div>
+        <table>
+          <thead><tr>
+            <th>Description</th><th style="text-align:right">Qty</th>
+            <th style="text-align:right">Unit</th><th style="text-align:right">Subtotal</th>
+          </tr></thead>
+          <tbody>
+            ${items.map(it => `<tr>
+              <td>${esc(it.description)}${it.sku ? `<div class="meta">${esc(it.sku)}</div>` : ''}</td>
+              <td style="text-align:right">${esc(it.quantity)}</td>
+              <td style="text-align:right">${esc(money(it.unit_price, o.currency))}</td>
+              <td style="text-align:right">${esc(money(it.subtotal, o.currency))}</td>
+            </tr>`).join('')}
+          </tbody>
+          <tfoot><tr>
+            <td colspan="3" style="text-align:right">Total</td>
+            <td style="text-align:right">${esc(money(o.amount, o.currency))}</td>
+          </tr></tfoot>
+        </table>
+      </div>`;
+    root.innerHTML = `
+      <div class="card">
+        <div class="status-row">
+          <span class="${pillClass('status', o.status)}">● ${esc((o.status || '').replace(/_/g,' '))}</span>
+          <span class="${pillClass('payment', o.payment_status)}">${esc((o.payment_status || '').replace(/_/g,' '))}</span>
+          <span class="meta">${esc((o.type || 'order').toUpperCase())}</span>
+        </div>
+        <h2>${esc(o.title || 'Order')}</h2>
+        <div class="meta">#${esc(o.order_number)}</div>
+        ${o.description ? `<div class="desc">${esc(o.description)}</div>` : ''}
+        <dl class="kv">
+          <dt>Scheduled</dt>       <dd>${esc(fmtDt(o.scheduled_at))}</dd>
+          <dt>Total</dt>           <dd>${esc(money(o.amount, o.currency))}</dd>
+          <dt>Paid</dt>            <dd>${esc(money(o.amount_paid, o.currency))}</dd>
+          <dt>Created</dt>         <dd>${esc(fmtDt(o.created_at))}</dd>
+          <dt>Last updated</dt>    <dd>${esc(fmtDt(o.updated_at))}</dd>
+          ${o.notes ? `<dt>Notes</dt><dd style="white-space:pre-wrap">${esc(o.notes)}</dd>` : ''}
+        </dl>
+      </div>
+      ${itemsHtml}
+      <div class="meta" style="text-align:center;font-size:12px;margin-top:24px">
+        This page updates when your order does — just refresh.
+      </div>
+    `;
+  }
+
+  async function load(){
+    if (!token) {
+      root.innerHTML = '<div class="error">No tracking token supplied. Check your WhatsApp message for the link.</div>';
+      return;
+    }
+    try {
+      const res = await fetch('/api/public/orders/track/' + encodeURIComponent(token), {
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.status === 404) {
+        root.innerHTML = '<div class="error">This tracking link is invalid or has expired.</div>';
+        return;
+      }
+      if (!res.ok) {
+        root.innerHTML = '<div class="error">Could not load order (HTTP ' + res.status + ').</div>';
+        return;
+      }
+      renderOrder(await res.json());
+    } catch(err) {
+      root.innerHTML = '<div class="error">Network error — please try again in a moment.</div>';
+    }
+  }
+  load();
+  // Soft-refresh every 30s so the customer sees status changes live without
+  // needing a WebSocket. Cheap enough for typical tracking-page dwell times.
+  setInterval(load, 30000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Not found — Veridian Edge</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="assets/design-tokens.css">
+<link rel="stylesheet" href="assets/components.css">
+<style>
+  body { background: var(--bg, #0b0f17); color: var(--text, #e6ebf5); min-height: 100vh;
+         display: flex; align-items: center; justify-content: center;
+         font-family: 'DM Sans', system-ui, sans-serif; padding: 24px; }
+  .wrap { max-width: 560px; text-align: center; }
+  h1   { font-family: 'Cormorant Garamond', serif; font-size: 3.2rem; margin: 0 0 12px; }
+  p    { opacity: .75; line-height: 1.55; margin: 0 0 22px; }
+  .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  a.btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;
+          border-radius: 999px; text-decoration: none; font-weight: 600;
+          background: linear-gradient(135deg, #d4af37, #c49a2c); color: #0b0f17;
+          border: 1px solid rgba(212,175,55,.5); }
+  a.btn.ghost { background: transparent; color: inherit; border-color: rgba(255,255,255,.2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>404</h1>
+  <p>We couldn't find the page you were looking for.</p>
+  <div class="row">
+    <a class="btn" href="index.html">Home</a>
+    <a class="btn ghost" href="portal.html">Customer portal</a>
+    <a class="btn ghost" href="index.html#quote">Request a quote</a>
+  </div>
+</div>
+</body>
+</html>

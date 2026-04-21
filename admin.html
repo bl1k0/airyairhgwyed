@@ -1282,18 +1282,49 @@
     const queue = JSON.parse(localStorage.getItem(OFFLINE_KEY) || '[]');
     if (!queue.length) { toast('Queue is empty.', 'info'); return; }
     let ok = 0, fail = 0;
+    const remaining = [];
+    const errors = [];
     for (const row of queue) {
-      const { id: _omit, ts: _omit2, ...payload } = row;
-      const { error } = await sb.from('quotes').insert(payload);
-      if (error) fail++; else ok++;
+      // Use the SECURITY DEFINER RPC — direct INSERT fails RLS because the
+      // INSERT policy is scoped to the `anon` role only (authenticated users
+      // have no INSERT policy on public.quotes). The RPC is GRANTed to both
+      // anon and authenticated, so admins can flush offline-queued rows here.
+      const { error: rpcErr } = await sb.rpc('submit_public_quote', {
+        p_name:       row.name       || '',
+        p_phone:      row.phone      || '',
+        p_email:      row.email      || null,
+        p_service:    row.service    || '',
+        p_location:   row.location   || null,
+        p_message:    row.message    || null,
+        p_photo_urls: Array.isArray(row.photo_urls) ? row.photo_urls : []
+      });
+      if (rpcErr) {
+        // Graceful fallback to direct insert in case the RPC isn't deployed
+        // (older Supabase projects). Most admin users have the service-level
+        // migration applied so this path is rare — but it keeps us working.
+        const { id: _omit, ts: _omit2, ...payload } = row;
+        const { error: insErr } = await sb.from('quotes').insert(payload);
+        if (insErr) {
+          fail++;
+          remaining.push(row);
+          errors.push(`${row.name || '—'}: ${insErr.message || rpcErr.message}`);
+        } else ok++;
+      } else ok++;
+    }
+    // Keep the failed rows in the queue so the admin can retry later.
+    if (remaining.length) {
+      localStorage.setItem(OFFLINE_KEY, JSON.stringify(remaining));
+    } else {
+      localStorage.removeItem(OFFLINE_KEY);
     }
     if (fail === 0) {
-      localStorage.removeItem(OFFLINE_KEY);
       showConfirm('queue');
       toast(`Flushed ${ok} submission(s) to Supabase.`, 'ok');
       addLog('info', `Flushed ${ok} offline submission(s)`);
     } else {
-      toast(`Partial flush: ${ok} OK, ${fail} failed.`, 'err');
+      toast(`Partial flush: ${ok} OK, ${fail} failed. Check console for details.`, 'err');
+      console.warn('[Veridian] Flush errors:', errors);
+      addLog('error', `Partial flush: ${ok} OK / ${fail} failed — ${errors[0] || ''}`);
     }
     checkOfflineQueue();
     loadSubmissions();
