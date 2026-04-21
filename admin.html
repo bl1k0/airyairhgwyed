@@ -310,6 +310,58 @@
     .settings-card h3 i { color: var(--accent); }
     .settings-card p { color: var(--text2); font-size: 0.8rem; margin-bottom: 20px; line-height: 1.6; }
     .settings-card.full { grid-column: 1 / -1; }
+
+    /* ── Supabase Sync Status card ───────────────────────────────────── */
+    .supa-dot { display:inline-block; width:10px; height:10px; border-radius:999px;
+                background:#888; box-shadow:0 0 0 2px rgba(255,255,255,.04); vertical-align:middle; }
+    .supa-dot--ok    { background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.18); }
+    .supa-dot--warn  { background:#eab308; box-shadow:0 0 0 3px rgba(234,179,8,.18); }
+    .supa-dot--err   { background:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.18); }
+    .supa-dot--idle  { background:#6b7280; }
+
+    .supa-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+                 gap:10px 24px; margin:6px 0 8px; }
+    .supa-row  { display:flex; align-items:center; justify-content:space-between; gap:10px;
+                 padding:8px 12px; border:1px solid var(--border); border-radius:10px;
+                 background:rgba(255,255,255,.02); }
+    .supa-label{ color:var(--text2); font-size:.78rem; text-transform:uppercase;
+                 letter-spacing:.04em; }
+    .supa-val  { color:var(--text); font-size:.85rem; font-weight:500; text-align:right;
+                 overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:60%; }
+    .supa-mono { font-family:'DM Mono', ui-monospace, monospace; font-size:.78rem;
+                 color:var(--text2); }
+
+    .supa-tables { grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); margin-top:16px; }
+    .supa-tile  { border:1px solid var(--border); border-radius:12px; padding:12px 14px;
+                  background:rgba(255,255,255,.02); }
+    .supa-tile-label { color:var(--text2); font-size:.72rem; text-transform:uppercase;
+                       letter-spacing:.05em; font-family:'DM Mono', monospace; }
+    .supa-tile-val   { font-size:1.8rem; font-weight:700; color:var(--text); margin-top:4px;
+                       line-height:1.1; }
+    .supa-tile-sub   { color:var(--text3, var(--text2)); font-size:.75rem; margin-top:2px; }
+    .supa-tile.err   { border-color:rgba(239,68,68,.5); background:rgba(239,68,68,.06); }
+    .supa-tile.err .supa-tile-val { color:#ef4444; font-size:.95rem; }
+    .supa-tile.ok    { border-color:rgba(34,197,94,.35); }
+
+    .supa-diag { margin-top:14px; padding:12px 14px; border-radius:10px; font-size:.82rem;
+                 line-height:1.6; font-family:'DM Mono', monospace; white-space:pre-wrap;
+                 border:1px solid var(--border); background:rgba(0,0,0,.15); color:var(--text); }
+    .supa-diag.ok   { border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.07); }
+    .supa-diag.err  { border-color:rgba(239,68,68,.4);  background:rgba(239,68,68,.08); color:#fecaca; }
+    .supa-diag.warn { border-color:rgba(234,179,8,.4);  background:rgba(234,179,8,.07);  color:#fde68a; }
+
+    .supa-advanced { margin-top:16px; padding-top:14px; border-top:1px dashed var(--border); }
+    .supa-advanced .s-field { margin-bottom:10px; }
+
+    /* Header live badge becomes clickable → jumps to sync card */
+    .badge-live { cursor:pointer; user-select:none; transition:filter .15s ease; }
+    .badge-live:hover { filter:brightness(1.15); }
+    #supaStatusCard.pulse-once { animation:supaPulse 1.1s ease-out 1; }
+    @keyframes supaPulse {
+      0%   { box-shadow:0 0 0 0 rgba(212,175,55,0); }
+      40%  { box-shadow:0 0 0 6px rgba(212,175,55,.18); }
+      100% { box-shadow:0 0 0 0 rgba(212,175,55,0); }
+    }
     .s-field { margin-bottom: 14px; }
     .s-field label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
     .s-field input, .s-field select, .s-field textarea {
@@ -467,7 +519,7 @@
         </div>
       </div>
       <div class="topbar-right">
-        <span class="badge-live off" id="liveBadge">Connecting…</span>
+        <span class="badge-live off" id="liveBadge" onclick="jumpToSyncStatus()" title="Click for sync diagnostics">Connecting…</span>
         <span class="user-chip" id="userChip">—</span>
         <button class="btn-logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
       </div>
@@ -563,6 +615,95 @@
             <p>Manage contact details, website stats, and your admin password.</p>
           </div>
           <div class="settings-grid">
+
+            <!-- ── SUPABASE SYNC STATUS ──────────────────────────────── -->
+            <div class="settings-card full" id="supaStatusCard">
+              <h3><i class="fas fa-database"></i> Supabase Connection & Sync
+                <span id="supaHeaderDot" class="supa-dot supa-dot--idle" title="Overall sync health"></span>
+              </h3>
+              <p>
+                Live health of the Supabase project this admin panel is talking to.
+                Use the diagnostic button to confirm every table the website and bot depend on is reachable.
+              </p>
+
+              <div class="supa-grid">
+                <div class="supa-row">
+                  <span class="supa-label">Supabase URL</span>
+                  <span id="supa-url" class="supa-val supa-mono">—</span>
+                </div>
+                <div class="supa-row">
+                  <span class="supa-label">API key (anon)</span>
+                  <span id="supa-key" class="supa-val supa-mono">—</span>
+                </div>
+                <div class="supa-row">
+                  <span class="supa-label">Signed in as</span>
+                  <span id="supa-user" class="supa-val">—</span>
+                </div>
+                <div class="supa-row">
+                  <span class="supa-label">Realtime channel</span>
+                  <span id="supa-rt" class="supa-val"><span class="supa-dot supa-dot--idle"></span> idle</span>
+                </div>
+                <div class="supa-row">
+                  <span class="supa-label">Last realtime event</span>
+                  <span id="supa-last-event" class="supa-val">never</span>
+                </div>
+                <div class="supa-row">
+                  <span class="supa-label">Last successful write</span>
+                  <span id="supa-last-write" class="supa-val">never</span>
+                </div>
+              </div>
+
+              <div class="supa-grid supa-tables">
+                <div class="supa-tile" data-table="quotes">
+                  <div class="supa-tile-label">quotes</div>
+                  <div class="supa-tile-val" id="supa-count-quotes">—</div>
+                  <div class="supa-tile-sub">website forms & CRM</div>
+                </div>
+                <div class="supa-tile" data-table="wabot_replies">
+                  <div class="supa-tile-label">wabot_replies</div>
+                  <div class="supa-tile-val" id="supa-count-wabot_replies">—</div>
+                  <div class="supa-tile-sub">admin → WhatsApp queue</div>
+                </div>
+                <div class="supa-tile" data-table="contact_requests">
+                  <div class="supa-tile-label">contact_requests</div>
+                  <div class="supa-tile-val" id="supa-count-contact_requests">—</div>
+                  <div class="supa-tile-sub">portal inbox</div>
+                </div>
+                <div class="supa-tile" data-table="orders">
+                  <div class="supa-tile-label">orders</div>
+                  <div class="supa-tile-val" id="supa-count-orders">—</div>
+                  <div class="supa-tile-sub">wabot → portal mirror</div>
+                </div>
+              </div>
+
+              <div class="btn-row" style="margin-top:16px;">
+                <button class="btn-save" onclick="runSupabaseDiagnostic()">
+                  <i class="fas fa-heart-pulse"></i> Run connection test
+                </button>
+                <button class="btn-save secondary" onclick="toggleSupaAdvanced()">
+                  <i class="fas fa-circle-info"></i> Details
+                </button>
+                <a class="btn-save secondary" id="supa-dash-link" href="#" target="_blank" rel="noopener">
+                  <i class="fas fa-up-right-from-square"></i> Open Supabase dashboard
+                </a>
+              </div>
+
+              <div id="supa-diag" class="supa-diag" hidden></div>
+              <div id="supa-advanced" class="supa-advanced" hidden>
+                <div class="s-field">
+                  <label>Full project URL</label>
+                  <input type="text" id="supa-url-full" readonly />
+                </div>
+                <div class="s-field">
+                  <label>Anon key (public — safe to share)</label>
+                  <input type="text" id="supa-key-full" readonly />
+                </div>
+                <div class="s-field">
+                  <label>SQL setup file (run once in Supabase SQL Editor)</label>
+                  <input type="text" readonly value="SUPABASE_COMPLETE_SETUP.sql" />
+                </div>
+              </div>
+            </div>
 
             <!-- ── OFFLINE QUEUE ── -->
             <div class="settings-card full" id="offlineQueueCard" style="display:none;">
@@ -781,11 +922,17 @@
   function enterDash(user) {
     document.getElementById('userChip').textContent = user.email || 'Signed in';
     document.body.classList.add('authed');
+    window._supaUser = user;
     loadSubmissions();
     loadSettings();
     loadLog();
     checkOfflineQueue();
     subscribeRealtime();
+    updateSyncStatusCard();
+    // Fire a background diagnostic so row counts populate without the admin
+    // needing to click Settings. Silently ignore errors — the card will still
+    // render "—" tiles until the admin clicks the button manually.
+    setTimeout(() => { try { runSupabaseDiagnostic(); } catch(_) {} }, 600);
     toast('Welcome back, ' + (user.email || 'Admin') + '.', 'ok');
   }
 
@@ -797,7 +944,7 @@
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('page-' + name).classList.add('active');
     if (btn) btn.classList.add('active');
-    if (name === 'settings') { loadSettings(); checkOfflineQueue(); }
+    if (name === 'settings') { loadSettings(); checkOfflineQueue(); updateSyncStatusCard(); }
     if (name === 'security') loadLog();
   }
 
@@ -910,13 +1057,16 @@
   function subscribeRealtime() {
     if (!sb) return;
     unsubscribeRealtime();
+    SYNC_STATE.rtStatus = 'connecting';
+    updateSyncStatusCard();
     rtChannel = sb
       .channel('quotes-live')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'quotes' },
-        (payload) => handleRealtimeEvent(payload))
+        (payload) => { SYNC_STATE.lastEvent = Date.now(); updateSyncStatusCard(); handleRealtimeEvent(payload); })
       .subscribe((status) => {
         const badge = document.getElementById('liveBadge');
+        SYNC_STATE.rtStatus = status;
         if (status === 'SUBSCRIBED') {
           badge.classList.remove('off');
           badge.textContent = 'Live';
@@ -925,6 +1075,7 @@
           badge.classList.add('off');
           badge.textContent = 'Offline';
         }
+        updateSyncStatusCard();
       });
   }
 
@@ -932,6 +1083,253 @@
     if (rtChannel) { try { sb.removeChannel(rtChannel); } catch(_) {} rtChannel = null; }
     const badge = document.getElementById('liveBadge');
     if (badge) { badge.classList.add('off'); badge.textContent = 'Offline'; }
+    SYNC_STATE.rtStatus = 'idle';
+    updateSyncStatusCard();
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SUPABASE SYNC STATUS  (helper so the admin knows at a glance
+  // whether the panel is actually talking to Supabase, which tables
+  // are reachable, and when the last successful read/write happened)
+  // ═══════════════════════════════════════════════════════════════
+  const SYNC_STATE = {
+    lastEvent: null,      // timestamp of last realtime push
+    lastWrite: null,      // timestamp of last successful write from this panel
+    rtStatus:  'idle',    // 'idle' | 'connecting' | 'SUBSCRIBED' | 'CHANNEL_ERROR' | ...
+    counts:    {},        // { quotes: 12, wabot_replies: 3, ... }
+    errors:    {},        // { orders: 'relation orders does not exist' }
+    lastTest:  null       // timestamp of last diagnostic
+  };
+
+  // Called from anywhere we successfully wrote to Supabase
+  function markSupabaseWrite() {
+    SYNC_STATE.lastWrite = Date.now();
+    updateSyncStatusCard();
+  }
+
+  function jumpToSyncStatus() {
+    showPage('settings', document.querySelector('.nav-item[onclick*="settings"]'));
+    const card = document.getElementById('supaStatusCard');
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      card.classList.add('pulse-once');
+      setTimeout(() => card.classList.remove('pulse-once'), 1200);
+    }
+  }
+
+  function toggleSupaAdvanced() {
+    const adv = document.getElementById('supa-advanced');
+    adv.hidden = !adv.hidden;
+  }
+
+  function _maskKey(k) {
+    if (!k || k.length < 16) return '—';
+    return k.slice(0, 10) + '…' + k.slice(-6);
+  }
+
+  function _fmtRel(ts) {
+    if (!ts) return 'never';
+    const d = (Date.now() - ts) / 1000;
+    if (d < 10)   return 'just now';
+    if (d < 60)   return Math.floor(d) + 's ago';
+    if (d < 3600) return Math.floor(d / 60) + 'm ago';
+    if (d < 86400) return Math.floor(d / 3600) + 'h ago';
+    return Math.floor(d / 86400) + 'd ago';
+  }
+
+  function updateSyncStatusCard() {
+    const urlEl  = document.getElementById('supa-url');
+    if (!urlEl) return;   // card not in DOM yet
+
+    // Config
+    urlEl.textContent = CONFIGURED ? SUPABASE_URL.replace(/^https?:\/\//, '') : 'NOT CONFIGURED';
+    document.getElementById('supa-key').textContent = CONFIGURED ? _maskKey(SUPABASE_ANON_KEY) : 'NOT CONFIGURED';
+    document.getElementById('supa-url-full').value  = SUPABASE_URL  || '';
+    document.getElementById('supa-key-full').value  = SUPABASE_ANON_KEY || '';
+    const link = document.getElementById('supa-dash-link');
+    if (link) {
+      const m = (SUPABASE_URL || '').match(/^https?:\/\/([a-z0-9]+)\.supabase\.co/i);
+      link.href = m ? `https://supabase.com/dashboard/project/${m[1]}` : 'https://supabase.com/dashboard';
+    }
+
+    // Auth
+    const who = (sb && sb.auth && sb.auth.currentSession && sb.auth.currentSession.user)
+             || (window._supaUser || null);
+    document.getElementById('supa-user').textContent = who ? (who.email || who.id) : 'not signed in';
+
+    // Realtime
+    const rtEl = document.getElementById('supa-rt');
+    const st   = SYNC_STATE.rtStatus;
+    const map  = {
+      SUBSCRIBED:     { cls: 'ok',   lbl: 'live — listening for changes' },
+      connecting:     { cls: 'warn', lbl: 'connecting…' },
+      CHANNEL_ERROR:  { cls: 'err',  lbl: 'channel error' },
+      TIMED_OUT:      { cls: 'err',  lbl: 'timed out' },
+      CLOSED:         { cls: 'err',  lbl: 'closed' },
+      idle:           { cls: 'idle', lbl: 'not subscribed' }
+    };
+    const m = map[st] || { cls: 'idle', lbl: st || 'idle' };
+    rtEl.innerHTML = `<span class="supa-dot supa-dot--${m.cls}"></span> ${m.lbl}`;
+
+    // Last event / write
+    document.getElementById('supa-last-event').textContent = _fmtRel(SYNC_STATE.lastEvent);
+    document.getElementById('supa-last-write').textContent = _fmtRel(SYNC_STATE.lastWrite);
+
+    // Counts & table tiles
+    ['quotes','wabot_replies','contact_requests','orders'].forEach(t => {
+      const tile = document.querySelector(`.supa-tile[data-table="${t}"]`);
+      const val  = document.getElementById('supa-count-' + t);
+      if (!tile || !val) return;
+      tile.classList.remove('ok','err');
+      const err   = SYNC_STATE.errors[t];
+      const count = SYNC_STATE.counts[t];
+      if (err) {
+        tile.classList.add('err');
+        val.textContent = 'unreachable';
+        tile.title = err;
+      } else if (typeof count === 'number') {
+        tile.classList.add('ok');
+        val.textContent = count.toLocaleString();
+        tile.title = `${count} rows`;
+      } else {
+        val.textContent = '—';
+        tile.title = 'run connection test to populate';
+      }
+    });
+
+    // Overall header dot — green if configured + realtime + no table errors;
+    // yellow if configured but realtime not subscribed; red if not configured
+    // or any table explicitly errored.
+    const dot = document.getElementById('supaHeaderDot');
+    if (!dot) return;
+    dot.classList.remove('supa-dot--ok','supa-dot--warn','supa-dot--err','supa-dot--idle');
+    if (!CONFIGURED)                                           dot.classList.add('supa-dot--err');
+    else if (Object.keys(SYNC_STATE.errors).length > 0)        dot.classList.add('supa-dot--err');
+    else if (SYNC_STATE.rtStatus !== 'SUBSCRIBED')             dot.classList.add('supa-dot--warn');
+    else                                                       dot.classList.add('supa-dot--ok');
+  }
+
+  // Ticks once a second so "5s ago" stays accurate while you look at it
+  setInterval(() => {
+    const card = document.getElementById('supaStatusCard');
+    if (card && document.getElementById('page-settings').classList.contains('active')) {
+      const e = document.getElementById('supa-last-event');
+      const w = document.getElementById('supa-last-write');
+      if (e) e.textContent = _fmtRel(SYNC_STATE.lastEvent);
+      if (w) w.textContent = _fmtRel(SYNC_STATE.lastWrite);
+    }
+  }, 1000);
+
+  async function runSupabaseDiagnostic() {
+    const out = document.getElementById('supa-diag');
+    out.hidden = false;
+    out.className = 'supa-diag';
+    out.textContent = 'Running diagnostic…\n';
+
+    const steps = [];
+    const add = (sym, line) => { steps.push(`${sym} ${line}`); out.textContent = steps.join('\n'); };
+
+    // 1. Config
+    if (!CONFIGURED) {
+      out.className = 'supa-diag err';
+      add('✗', 'Supabase URL / anon key not configured in admin.html');
+      add(' ', '   → paste your project URL + anon key near the top of admin.html and refresh.');
+      SYNC_STATE.lastTest = Date.now();
+      updateSyncStatusCard();
+      return;
+    }
+    add('✓', `Config present — ${SUPABASE_URL}`);
+
+    // 2. Auth
+    try {
+      const { data, error } = await sb.auth.getUser();
+      if (error || !data.user) throw new Error(error?.message || 'no session');
+      add('✓', `Signed in as ${data.user.email || data.user.id}`);
+      window._supaUser = data.user;
+    } catch (e) {
+      add('✗', `Auth check failed — ${e.message}`);
+      out.className = 'supa-diag err';
+      SYNC_STATE.lastTest = Date.now();
+      updateSyncStatusCard();
+      return;
+    }
+
+    // 3. Core tables — use head+count so we don't pull rows, just verify
+    //    reachability + RLS visibility + row counts.
+    const tables = ['quotes','wabot_replies','contact_requests','orders'];
+    SYNC_STATE.counts = {};
+    SYNC_STATE.errors = {};
+    let anyError = false;
+
+    for (const t of tables) {
+      try {
+        const { count, error } = await sb.from(t).select('*', { count: 'exact', head: true });
+        if (error) throw error;
+        SYNC_STATE.counts[t] = count || 0;
+        add('✓', `${t.padEnd(18)} reachable — ${count ?? 0} rows`);
+      } catch (e) {
+        const msg = e.message || e.code || String(e);
+        SYNC_STATE.errors[t] = msg;
+        anyError = true;
+        if (/does not exist|42P01/i.test(msg)) {
+          add('⚠', `${t.padEnd(18)} missing — run SUPABASE_COMPLETE_SETUP.sql to create it`);
+        } else if (/permission|RLS|policy/i.test(msg)) {
+          add('⚠', `${t.padEnd(18)} RLS blocked read — still OK for writes`);
+        } else {
+          add('✗', `${t.padEnd(18)} error — ${msg}`);
+        }
+      }
+    }
+
+    // 4. Realtime
+    if (SYNC_STATE.rtStatus === 'SUBSCRIBED') {
+      add('✓', 'Realtime channel SUBSCRIBED — live updates will arrive automatically');
+    } else {
+      add('⚠', `Realtime status = ${SYNC_STATE.rtStatus || 'idle'} (new rows won't push until this turns SUBSCRIBED)`);
+    }
+
+    // 5. Write smoke test — insert + delete an audit_log row so we can
+    //    verify end-to-end write permission without polluting quotes.
+    try {
+      const stamp = new Date().toISOString();
+      const { data, error } = await sb.from('audit_log')
+        .insert({ actor_email: (window._supaUser?.email || 'admin'),
+                  action: 'supabase_diagnostic', details: { ts: stamp } })
+        .select('id').single();
+      if (error) throw error;
+      if (data?.id) {
+        await sb.from('audit_log').delete().eq('id', data.id);
+      }
+      markSupabaseWrite();
+      add('✓', 'Write smoke test OK (audit_log insert + delete round-trip)');
+    } catch (e) {
+      const msg = e.message || String(e);
+      if (/does not exist|42P01/i.test(msg)) {
+        add('⚠', 'Write smoke test skipped — audit_log not created yet (run SUPABASE_COMPLETE_SETUP.sql §2.3)');
+      } else {
+        add('✗', `Write smoke test failed — ${msg}`);
+        anyError = true;
+      }
+    }
+
+    SYNC_STATE.lastTest = Date.now();
+    out.className = anyError ? 'supa-diag warn' : 'supa-diag ok';
+    add('',  anyError
+          ? '— Finished with warnings. Fix the ✗ / ⚠ items above, then retry.'
+          : '— All checks passed. Your website is fully synced to Supabase.');
+    updateSyncStatusCard();
+    addLog(anyError ? 'fail' : 'ok', 'Supabase diagnostic: ' + steps[steps.length - 1]);
+  }
+
+  // First render once DOM is ready + after each auth change
+  document.addEventListener('DOMContentLoaded', () => {
+    updateSyncStatusCard();
+  });
+  if (window.sb && sb.auth && sb.auth.onAuthStateChange) {
+    sb.auth.onAuthStateChange((_evt, session) => {
+      window._supaUser = session?.user || null;
+      updateSyncStatusCard();
+    });
   }
 
   function handleRealtimeEvent(payload) {
@@ -1102,6 +1500,7 @@
       msg.textContent = '✓ queued for delivery';
       document.getElementById('wabotReplyBody').value = '';
       toast('Reply queued — wabot will send it shortly.', 'ok');
+      markSupabaseWrite();
     } catch (e) {
       msg.textContent = '✗ ' + (e.message || 'failed');
       toast('Reply failed: ' + (e.message || ''), 'err');
@@ -1125,6 +1524,7 @@
     if (!activeId || !sb) return;
     const { error } = await sb.from('quotes').update({ status }).eq('id', activeId);
     if (error) { toast('Update failed: ' + error.message, 'err'); return; }
+    markSupabaseWrite();
 
     const idx = allSubmissions.findIndex(s => s.id === activeId);
     if (idx >= 0) allSubmissions[idx].status = status;
@@ -1141,6 +1541,7 @@
     if (!activeId || !sb) return;
     const { error } = await sb.from('quotes').delete().eq('id', activeId);
     if (error) { toast('Delete failed: ' + error.message, 'err'); return; }
+    markSupabaseWrite();
 
     allSubmissions = allSubmissions.filter(s => s.id !== activeId);
     renderTable(allSubmissions, 'submissionsTable');
@@ -1317,6 +1718,7 @@
     } else {
       localStorage.removeItem(OFFLINE_KEY);
     }
+    if (ok > 0) markSupabaseWrite();
     if (fail === 0) {
       showConfirm('queue');
       toast(`Flushed ${ok} submission(s) to Supabase.`, 'ok');
