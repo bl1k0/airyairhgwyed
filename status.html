@@ -7,8 +7,14 @@
   <meta name="robots" content="noindex,nofollow" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <!-- Shared design system (Phase 1) — tokens + components.
+       Loaded BEFORE the inline <style> block below so ve-* utilities
+       and component classes are available while the page keeps its
+       custom tracking-dashboard look. -->
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/components.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -210,6 +216,41 @@
       .card { padding: 32px 24px; }
       .meta-row { grid-template-columns: 1fr; }
     }
+
+    /* ─── Phase 1 evolution overrides (status page) ──────────────────
+       Keep the tracking-portal vibe (dark, cyan/blue accents) but
+       bring focus/motion/typography in line with the shared system. */
+    html { font-family: var(--ve-font-body, 'DM Sans', sans-serif); }
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    a:focus-visible, button:focus-visible, input:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(79,142,247,0.45);
+      border-radius: var(--ve-radius-sm, 8px);
+    }
+    .card {
+      transition:
+        box-shadow var(--ve-dur-base, 220ms) var(--ve-ease-out, cubic-bezier(0.16,1,0.3,1)),
+        transform var(--ve-dur-base, 220ms) var(--ve-ease-out, cubic-bezier(0.16,1,0.3,1));
+    }
+    ::selection { background: rgba(79,142,247,0.30); color: #fff; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb {
+      background: var(--bg3);
+      border-radius: 999px;
+      border: 2px solid var(--bg);
+    }
+    ::-webkit-scrollbar-thumb:hover { background: var(--border2); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+    /* ─── end Phase 1 overrides ─── */
   </style>
 </head>
 <body>

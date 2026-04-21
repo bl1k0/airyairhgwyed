@@ -11,10 +11,15 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://veridianedgellc.com" />
   <title>Veridian Edge Technical Services LLC | Dubai, UAE</title>
+  <!-- Shared design system (Phase 1) — tokens + components, must load BEFORE style.css
+       so legacy rules can keep cascading on top, and before any inline styles so
+       components consuming --ve-* variables resolve correctly. -->
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/components.css" />
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 </head>
 <body>
@@ -37,6 +42,9 @@
         <a href="#services" class="nav-link">Services</a>
         <a href="#portfolio" class="nav-link">Portfolio</a>
         <a href="#contact" class="nav-link">Contact</a>
+        <a href="portal.html" class="nav-link" title="Customer portal — sign in to see your quotes and messages">
+          <i class="fas fa-user-lock" aria-hidden="true"></i> Portal
+        </a>
         <a href="#quote" class="nav-cta">Get a Quote</a>
       </nav>
       <button class="hamburger" id="hamburger" aria-label="Toggle menu">
@@ -586,6 +594,7 @@
             <li><a href="#portfolio">Portfolio</a></li>
             <li><a href="#quote">Get a Quote</a></li>
             <li><a href="#contact">Contact</a></li>
+            <li><a href="portal.html">Customer Portal</a></li>
           </ul>
         </div>
         <div class="footer-col">

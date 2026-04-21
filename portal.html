@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Portal — Veridian Edge</title>
+  <meta name="description" content="Your private portal — see the status of every request you've sent to Veridian Edge, reply to our team, and track every message from one place.">
+  <meta name="robots" content="noindex,nofollow">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <!-- Phase 1 shared design system + Phase 2 portal module -->
+  <link rel="stylesheet" href="assets/design-tokens.css">
+  <link rel="stylesheet" href="assets/components.css">
+  <link rel="stylesheet" href="modules/customer-portal/portal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="ve-mod-portal">
+
+  <!-- ══ TOP BAR ══════════════════════════════════════════════════════════ -->
+  <header class="ve-mod-portal-topbar">
+    <a href="index.html" class="ve-mod-portal-brand" aria-label="Veridian Edge home">
+      <span class="ve-mod-portal-logo">VE</span>
+      <span class="ve-mod-portal-brand-text">
+        <strong>VERIDIAN EDGE</strong>
+        <em>Customer Portal</em>
+      </span>
+    </a>
+    <div class="ve-mod-portal-topbar-right">
+      <span id="ve-p-user" class="ve-muted" hidden></span>
+      <button id="ve-p-signout" class="ve-btn ve-btn--ghost ve-btn--sm" hidden>
+        <i class="fas fa-right-from-bracket"></i> Sign out
+      </button>
+    </div>
+  </header>
+
+  <!-- ══ LOGIN VIEW ═══════════════════════════════════════════════════════ -->
+  <section id="ve-p-login" class="ve-mod-portal-login">
+    <div class="ve-card ve-mod-portal-login-card ve-stack">
+      <h1 class="ve-card__title">Welcome back</h1>
+      <p class="ve-card__body">
+        Sign in with your email — we'll send you a magic link so you never
+        have to remember a password.
+      </p>
+      <label class="ve-mod-portal-field">
+        <span>Email address</span>
+        <input id="ve-p-email" type="email" class="ve-input" autocomplete="email"
+               placeholder="you@example.com" required>
+      </label>
+      <button id="ve-p-send-otp" class="ve-btn ve-btn--block">
+        <i class="fas fa-paper-plane"></i> Send magic link
+      </button>
+      <p id="ve-p-login-msg" class="ve-mod-portal-login-msg" role="status"></p>
+
+      <div class="ve-divider"></div>
+      <p class="ve-muted ve-mod-portal-small">
+        Don't have any requests yet? You can still
+        <a href="index.html#quote">submit a quote on our homepage</a>
+        without signing in.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══ MAIN APP (hidden until signed in) ════════════════════════════════ -->
+  <main id="ve-p-app" class="ve-mod-portal-app" hidden>
+
+    <!-- ── Left: quotes list ─────────────────────────────────────────── -->
+    <aside class="ve-mod-portal-list">
+      <div class="ve-mod-portal-list-head">
+        <h2>Your requests</h2>
+        <button id="ve-p-new" class="ve-btn ve-btn--ghost ve-btn--sm" title="New message">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+      <div id="ve-p-quotes" class="ve-mod-portal-quotes" aria-live="polite">
+        <!-- rendered by portal.js -->
+      </div>
+
+      <!-- Phase 7: Orders — mirrored from wabot via syncWorker. Hidden
+           until the customer has at least one order. Supabase Realtime
+           keeps this section live without reload. -->
+      <div id="ve-p-orders-wrap" hidden>
+        <div class="ve-mod-portal-list-head" style="margin-top:18px">
+          <h2>Your orders</h2>
+        </div>
+        <div id="ve-p-orders" class="ve-mod-portal-quotes" aria-live="polite"></div>
+      </div>
+    </aside>
+
+    <!-- ── Right: thread ─────────────────────────────────────────────── -->
+    <section class="ve-mod-portal-thread" id="ve-p-thread">
+      <div class="ve-mod-portal-empty" id="ve-p-empty">
+        <i class="fas fa-comments"></i>
+        <h3>Pick a request</h3>
+        <p>Select one of your requests on the left to see the conversation with our team.</p>
+      </div>
+
+      <!-- Populated by portal.js when a quote is selected -->
+      <div id="ve-p-thread-body" hidden>
+        <header class="ve-mod-portal-thread-head">
+          <div>
+            <h2 id="ve-p-thread-title">—</h2>
+            <p id="ve-p-thread-sub" class="ve-muted"></p>
+          </div>
+          <span id="ve-p-thread-state" class="ve-pill">—</span>
+        </header>
+        <div id="ve-p-messages" class="ve-mod-portal-messages" aria-live="polite"></div>
+        <form id="ve-p-reply" class="ve-mod-portal-reply">
+          <textarea id="ve-p-reply-body" class="ve-textarea"
+                    placeholder="Type your reply…" rows="3"
+                    maxlength="4000" required></textarea>
+          <div class="ve-mod-portal-reply-row">
+            <span id="ve-p-reply-count" class="ve-muted ve-mod-portal-small">0 / 4000</span>
+            <button type="submit" class="ve-btn">
+              <i class="fas fa-paper-plane"></i> Send
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- ══ NEW-MESSAGE MODAL ══════════════════════════════════════════════ -->
+  <div id="ve-p-new-modal" class="ve-mod-portal-modal" hidden>
+    <div class="ve-card ve-mod-portal-modal-card ve-stack">
+      <h2 class="ve-card__title">Start a new request</h2>
+      <p class="ve-card__body">
+        Send us a quick note — one of our team will reply on WhatsApp and
+        here in the portal within working hours.
+      </p>
+      <label class="ve-mod-portal-field">
+        <span>Subject (optional)</span>
+        <input id="ve-p-new-subject" class="ve-input" placeholder="e.g. Wallpaper for bedroom">
+      </label>
+      <label class="ve-mod-portal-field">
+        <span>Message</span>
+        <textarea id="ve-p-new-body" class="ve-textarea" rows="5"
+                  placeholder="Tell us what you need…" maxlength="4000" required></textarea>
+      </label>
+      <div class="ve-row ve-mod-portal-modal-actions">
+        <button id="ve-p-new-cancel" class="ve-btn ve-btn--ghost">Cancel</button>
+        <button id="ve-p-new-send"   class="ve-btn">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TOAST REGION ═══════════════════════════════════════════════════ -->
+  <div id="ve-p-toasts" class="ve-toast-region" aria-live="polite"></div>
+
+  <!-- ══ BOOTSTRAP ══════════════════════════════════════════════════════ -->
+  <script>
+    // ═════════════════════════════════════════════════════════════════
+    // ⚙  SUPABASE CONFIG — same values as admin.html / script.js.
+    //    Keep these two constants in sync with the rest of the site.
+    // ═════════════════════════════════════════════════════════════════
+    window.VE_PORTAL_CONFIG = {
+      SUPABASE_URL:      'https://eptklnlzudhjmhlykicj.supabase.co',
+      SUPABASE_ANON_KEY: 'sb_publishable_MWwOnnIN9WMSCPJjjlYCdQ_XHkTbBDN',
+      // Optional — if set, the portal will POST new messages to this URL
+      // as a fallback path (wabot's /api/customer/contact). Leave blank
+      // to rely on Supabase contact_requests only.
+      WABOT_API_URL:     ''
+    };
+  </script>
+  <script src="modules/customer-portal/portal.js" defer></script>
+</body>
+</html>

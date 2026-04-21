@@ -1343,3 +1343,188 @@ input, select, textarea {
   .filter-btn { padding: 7px 16px; font-size: 0.8rem; }
   .quote-form-wrap { padding: 24px; }
 }
+
+/* ============================================================
+   PHASE 1 — VISUAL EVOLUTION OVERRIDES  (v1.0)
+   ------------------------------------------------------------
+   These rules layer on TOP of the legacy stylesheet above.
+   - We don't delete anything: existing selectors still work.
+   - We refine shadows, borders, focus rings, transitions,
+     spacing rhythm, and motion curves so the public site feels
+     polished and matches the wabot dashboard surface.
+   - All values come from /assets/design-tokens.css so a future
+     phase can re-skin by swapping one file.
+   Safe rollback = comment out this block.
+   ============================================================ */
+
+/* ── Body: slightly warmer neutral, better text rendering ────── */
+body {
+  color: var(--ve-text-primary);
+  background: var(--ve-surface-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Focus ring for every interactive element — accessibility ── */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible,
+.nav-cta:focus-visible,
+.filter-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ve-ring-focus);
+  border-radius: var(--ve-radius-sm);
+}
+
+/* ── Buttons: unified elevation + motion curve ───────────────── */
+.btn,
+.nav-cta,
+.hero-actions .btn {
+  transition:
+    transform var(--ve-dur-quick) var(--ve-ease-out),
+    background var(--ve-dur-base) var(--ve-ease-out),
+    box-shadow var(--ve-dur-base) var(--ve-ease-out),
+    color var(--ve-dur-base) var(--ve-ease-out);
+  box-shadow: var(--ve-elev-1);
+  letter-spacing: 0.02em;
+}
+.btn:hover,
+.nav-cta:hover {
+  box-shadow: var(--ve-elev-2);
+  transform: translateY(-1px);
+}
+.btn:active,
+.nav-cta:active {
+  transform: translateY(0);
+  box-shadow: var(--ve-elev-1);
+}
+
+/* Primary CTA — subtle gold underglow on hover */
+.btn-primary:hover,
+.nav-cta:hover {
+  box-shadow: var(--ve-elev-2), 0 0 0 1px rgba(201,168,76,0.25);
+}
+
+/* ── Cards: consistent elevation + border + lift on hover ────── */
+.service-card,
+.portfolio-item,
+.testimonial-card,
+.why-card,
+.quote-form-wrap,
+.stats-card,
+.process-step,
+.contact-card {
+  border: 1px solid var(--ve-border-subtle);
+  box-shadow: var(--ve-elev-1);
+  transition:
+    box-shadow var(--ve-dur-base) var(--ve-ease-out),
+    transform var(--ve-dur-base) var(--ve-ease-out),
+    border-color var(--ve-dur-base) var(--ve-ease-out);
+}
+.service-card:hover,
+.portfolio-item:hover,
+.testimonial-card:hover,
+.why-card:hover {
+  box-shadow: var(--ve-elev-3);
+  border-color: var(--ve-border-default);
+  transform: translateY(-3px);
+}
+
+/* ── Form fields: refined border + focus ring ────────────────── */
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="url"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+  border: 1px solid var(--ve-border-default);
+  border-radius: var(--ve-radius-sm);
+  padding: 12px 14px;
+  background: var(--ve-surface-card);
+  color: var(--ve-text-primary);
+  transition:
+    border-color var(--ve-dur-base) var(--ve-ease-out),
+    box-shadow var(--ve-dur-base) var(--ve-ease-out);
+}
+input:hover, select:hover, textarea:hover {
+  border-color: var(--ve-border-strong);
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--ve-brand-400);
+  box-shadow: var(--ve-ring-focus);
+}
+::placeholder { color: var(--ve-text-muted); opacity: 1; }
+
+/* ── Section tag: small chip gets proper pill polish ─────────── */
+.section-tag {
+  background: rgba(201,168,76,0.10);
+  border: 1px solid rgba(201,168,76,0.28);
+  color: var(--ve-gold-600);
+  font-weight: var(--ve-fw-semi);
+  line-height: 1.4;
+  padding: 5px 14px;
+  border-radius: var(--ve-radius-pill);
+}
+
+/* ── Navigation: backdrop blur + elevated state on scroll ────── */
+.navbar {
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  transition:
+    background var(--ve-dur-base) var(--ve-ease-out),
+    box-shadow var(--ve-dur-base) var(--ve-ease-out),
+    border-color var(--ve-dur-base) var(--ve-ease-out);
+}
+.navbar.scrolled {
+  box-shadow: var(--ve-elev-2);
+  border-bottom: 1px solid var(--ve-border-subtle);
+}
+
+/* ── Hero: give display type proper letter-spacing ───────────── */
+.hero-title,
+.section-title {
+  font-family: var(--ve-font-display);
+  letter-spacing: var(--ve-letter-tight);
+}
+
+/* ── Footer: use shared ink tokens for better contrast ───────── */
+.footer {
+  background: var(--ve-brand-900);
+  color: var(--ve-ink-300);
+}
+.footer a:hover { color: var(--ve-gold-400); }
+
+/* ── Scrollbar polish (WebKit) ───────────────────────────────── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--ve-surface-sunken); }
+::-webkit-scrollbar-thumb {
+  background: var(--ve-ink-300);
+  border-radius: var(--ve-radius-pill);
+  border: 2px solid var(--ve-surface-sunken);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ve-ink-400); }
+
+/* ── Selection color matches brand ───────────────────────────── */
+::selection { background: rgba(30,58,138,0.20); color: var(--ve-brand-900); }
+
+/* ── Respect reduced motion across legacy animations ─────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* ======================= END PHASE 1 OVERRIDES =============== */
